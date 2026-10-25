@@ -21,12 +21,14 @@ Copy `.env.example` to `.env.local` and fill it in as you go.
 
 ## 3. Google Calendar (optional)
 
-Skip this to start: with no Google credentials, or `CALENDAR_MODE=demo`, every student gets a made-up demo calendar and `/rally status` says so. Add Google when you want real calendars.
+Skip this to start: with no Google credentials, or `CALENDAR_MODE=demo`, every student gets a made-up demo calendar and `/rally status` says so. With Google set up, use `CALENDAR_MODE=hybrid`: students who ran `/rally connect` use their real calendar and everyone else keeps a demo one.
 
-1. console.cloud.google.com: create a project and enable the **Google Calendar API**.
-2. OAuth consent screen: External, add yourself and friends as **test users** (a test-mode app can have up to 100 without Google's review).
-3. Credentials, then Create OAuth client ID, type Web application. Authorized redirect URI: `https://YOUR-APP.vercel.app/api/google/callback`.
-4. Copy the client id and secret into `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+1. console.cloud.google.com: create a project named Rally.
+2. APIs and Services, then Library: enable the **Google Calendar API**.
+3. APIs and Services, then OAuth consent screen (Google Auth Platform): choose **External**, app name Rally, your email as support and developer contact. Under Audience, keep it in **Testing** and add every person who will connect as a **test user** (up to 100; Google shows an "unverified app" screen to them, which is expected).
+4. Data Access (scopes): add `https://www.googleapis.com/auth/calendar.freebusy` and `https://www.googleapis.com/auth/calendar.events`.
+5. Clients, then Create client: type **Web application**. Authorized redirect URI: `https://YOUR-APP.vercel.app/api/google/callback`.
+6. Save the client ID and secret with `./scripts/save-secret.sh GOOGLE_CLIENT_ID` and `./scripts/save-secret.sh GOOGLE_CLIENT_SECRET`, add both to Vercel, set `CALENDAR_MODE=hybrid`, and redeploy.
 
 Rally asks for two scopes only: `calendar.freebusy` (when you are busy, never what for) and `calendar.events` (to add an event you agreed to).
 

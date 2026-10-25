@@ -16,4 +16,6 @@ export interface CalendarPort {
   /** Busy blocks only. Never titles or details. */
   busy(person: PersonId, window: Interval): Promise<Interval[]>;
   insertEvent(person: PersonId, event: { title: string; interval: Interval; description?: string }): Promise<{ id: string }>;
+  /** Optional: whether this person's calendar is real or a made-up demo one. Used only to be honest in /rally status. */
+  kind?(person: PersonId): Promise<'connected' | 'demo' | 'none'>;
 }

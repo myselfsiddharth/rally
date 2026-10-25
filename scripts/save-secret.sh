@@ -23,6 +23,8 @@ case "$name" in
   SUPABASE_ACCESS_TOKEN) printf "%s" "$value" | grep -Eq "^sbp_[A-Za-z0-9]{30,}$" || bad "a Supabase token starts with sbp_ and is about 44 characters long" ;;
   DISCORD_APP_ID) case "$value" in *[!0-9]*) bad "the Application ID is only digits (about 18 to 20 of them)" ;; esac ;;
   DISCORD_PUBLIC_KEY) printf '%s' "$value" | grep -Eq '^[0-9a-fA-F]{64}$' || bad "the Public Key is exactly 64 letters and numbers (0-9, a-f)" ;;
+  GOOGLE_CLIENT_ID) case "$value" in *.apps.googleusercontent.com) ;; *) bad "a Google client ID ends with .apps.googleusercontent.com" ;; esac ;;
+  GOOGLE_CLIENT_SECRET) case "$value" in GOCSPX-*) ;; *) bad "a Google client secret starts with GOCSPX-" ;; esac ;;
   DISCORD_BOT_TOKEN) [ "${#value}" -ge 50 ] || bad "a bot token is long (50+ characters); use Bot, then Reset Token" ;;
 esac
 touch .env.local

@@ -1,6 +1,7 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { DemoCalendar } from '../adapters/calendar/demo';
 import { GoogleCalendar } from '../adapters/calendar/google';
+import { HybridCalendar } from '../adapters/calendar/hybrid';
 import { GoogleOAuth } from '../adapters/calendar/oauth';
 import { DiscordPlatform } from '../adapters/platform/discord';
 import { SupabaseStore } from '../adapters/store/supabase';
@@ -22,11 +23,13 @@ export interface Runtime {
 export function buildRuntime(source: Record<string, string | undefined> = process.env): Runtime {
   const env = readEnv(source);
   const store = new SupabaseStore(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
-  const useGoogle = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) && env.CALENDAR_MODE !== 'demo';
+  const mode = env.CALENDAR_MODE ?? 'google';
+  const useGoogle = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) && mode !== 'demo';
   const oauth = useGoogle
     ? new GoogleOAuth({ clientId: env.GOOGLE_CLIENT_ID!, clientSecret: env.GOOGLE_CLIENT_SECRET!, redirectUri: `${env.APP_URL.replace(/\/$/, '')}/api/google/callback` }, store)
     : undefined;
-  const calendar = oauth ? new GoogleCalendar({ accessToken: (p) => oauth.accessToken(p) }) : new DemoCalendar(store);
+  const google = oauth ? new GoogleCalendar({ accessToken: (p) => oauth.accessToken(p) }) : undefined;
+  const calendar = google ? (mode === 'hybrid' ? new HybridCalendar(google, new DemoCalendar(store)) : google) : new DemoCalendar(store);
   const platform = new DiscordPlatform({
     botToken: env.DISCORD_BOT_TOKEN,
     channelOf: async (circle) => (await store.get<CircleRecord>('circle', circle))?.channelId,

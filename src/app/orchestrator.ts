@@ -154,9 +154,8 @@ export class Orchestrator {
     const rec = await this.person(person);
     if (!rec) return 'You have not joined anything yet. Use /rally join with a code from a friend.';
     const parties = (await this.d.store.list<PartyRecord>('party')).filter((p) => p.plan.guests.includes(person) && !['cancelled', 'no_slot'].includes(p.plan.status));
-    const connected = await this.d.calendar.connected(person);
-    const demo = (this.d.calendar as { isDemo?: boolean }).isDemo === true;
-    const lines = [`Calendar: ${demo ? 'demo (a made-up calendar, not yours)' : connected ? 'connected' : 'not connected (use /rally connect)'}`, `Quiet hours: ${rec.prefs.quietStartHour}:00 to ${rec.prefs.quietEndHour}:00`, `Coffee invites: at most ${rec.prefs.maxPairInvitesPerWeek} a week`];
+    const kind = this.d.calendar.kind ? await this.d.calendar.kind(person) : (await this.d.calendar.connected(person)) ? 'connected' : 'none';
+    const lines = [`Calendar: ${kind === 'demo' ? 'demo (a made-up calendar, not yours; use /rally connect for your real one)' : kind === 'connected' ? 'connected (only your busy and free times are used)' : 'not connected (use /rally connect)'}`, `Quiet hours: ${rec.prefs.quietStartHour}:00 to ${rec.prefs.quietEndHour}:00`, `Coffee invites: at most ${rec.prefs.maxPairInvitesPerWeek} a week`];
     for (const p of parties.slice(-4)) lines.push(`${p.title}: ${p.plan.status.replace('_', ' ')}`);
     return lines.join('\n');
   }

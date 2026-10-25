@@ -9,7 +9,8 @@ const Env = z.object({
   // Optional: without Google, everyone gets a clearly labelled made-up calendar so the bot can still be tried.
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
-  CALENDAR_MODE: z.enum(['google', 'demo']).optional(),
+  // google: only real calendars. demo: only made-up calendars. hybrid: real if connected, otherwise made-up.
+  CALENDAR_MODE: z.enum(['google', 'demo', 'hybrid']).optional(),
   APP_URL: z.string().url(),
   CRON_SECRET: z.string().min(8),
   LLM_BASE_URL: z.string().url().optional(),

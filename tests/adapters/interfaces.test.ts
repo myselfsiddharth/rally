@@ -290,3 +290,26 @@ describe('environment without Google', () => {
     expect(() => readEnv({ ...base, CALENDAR_MODE: 'nope' })).toThrow('CALENDAR_MODE');
   });
 });
+
+import { HybridCalendar } from '../../src/adapters/calendar/hybrid';
+
+describe('HybridCalendar', () => {
+  const window = { start: Date.UTC(2026, 9, 26, 7), end: Date.UTC(2026, 9, 27, 7) };
+  it('uses Google for people who connected and a demo calendar for everyone else, and reports which', async () => {
+    const calls: string[] = [];
+    const google = {
+      connected: async (p: string) => p === 'real',
+      busy: async (p: string) => { calls.push(`google:${p}`); return [{ start: window.start, end: window.start + 3_600_000 }]; },
+      insertEvent: async (p: string) => { calls.push(`google-insert:${p}`); return { id: 'g' }; },
+    };
+    const hybrid = new HybridCalendar(google, new DemoCalendar(new MemoryStore()));
+    expect(await hybrid.kind('real')).toBe('connected');
+    expect(await hybrid.kind('guest')).toBe('demo');
+    expect(await hybrid.connected()).toBe(true);
+    expect(await hybrid.busy('real', window)).toEqual([{ start: window.start, end: window.start + 3_600_000 }]);
+    await hybrid.busy('guest', window);
+    await hybrid.insertEvent('real', { title: 't', interval: window });
+    await hybrid.insertEvent('guest', { title: 't', interval: window });
+    expect(calls).toEqual(['google:real', 'google-insert:real']);
+  });
+});

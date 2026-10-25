@@ -26,6 +26,10 @@ export class GoogleCalendar implements CalendarPort {
     return (await this.deps.accessToken(person)) !== undefined;
   }
 
+  async kind(person: PersonId): Promise<'connected' | 'none'> {
+    return (await this.connected(person)) ? 'connected' : 'none';
+  }
+
   private async token(person: PersonId): Promise<string> {
     const t = await this.deps.accessToken(person);
     if (!t) throw new CalendarError('calendar not connected');

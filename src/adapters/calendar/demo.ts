@@ -26,6 +26,10 @@ export class DemoCalendar implements CalendarPort {
     return true;
   }
 
+  async kind(): Promise<'demo'> {
+    return 'demo';
+  }
+
   private base(person: PersonId, window: Interval): Interval[] {
     const traits = createRng(hash(`traits:${person}`));
     const classDays = traits.chance(0.5) ? [1, 3, 5] : [2, 4];
