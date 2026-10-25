@@ -282,7 +282,7 @@ export function runSim(opts: SimOptions): SimResult {
     if (allowedAt > now) {
       if (!capBlocked.has(occ.id)) {
         capBlocked.add(occ.id);
-        note('cap_blocked', `${occ.title}: ${occ.circle} already has a party within 14 days, so the agents hold off`, occ.id);
+        note('cap_blocked', `${occ.title}: this friend circle already has a party within 14 days, so the agents hold off`, occ.id);
       }
       const nearby = [...parties.values()].find(
         (p) => p.circle === occ.circle && p.slot && ['proposed', 'assigning', 'needs_host', 'committed'].includes(p.status) && p.slot.interval.start >= occ.window.start && p.slot.interval.start < occ.window.end,
@@ -303,7 +303,7 @@ export function runSim(opts: SimOptions): SimResult {
     }
     if (!hostAsked.has(occ.id)) {
       hostAsked.add(occ.id);
-      note('occasion', `${occ.title} is coming up. Agents in ${occ.circle} start planning.`, occ.id);
+      note('occasion', `${occ.title} is coming up. The friends' agents start planning.`, occ.id);
     }
     const members = cohort.circles[occ.circle]!;
     let host = hosts.get(occ.id); // a host who already agreed stays host on a retry after the cap clears

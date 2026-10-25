@@ -80,7 +80,7 @@ export function describeMessage(m: Message, names: Record<string, string>): stri
     case 'PROPOSE':
       return m.body.optional
         ? `Offers ${n(m.to)} an optional spot: ${slot ? formatSlot(slot) : 'the proposed time'}`
-        : `Proposes ${slot ? formatSlot(slot) : 'a time'} to ${n(m.to)}`;
+        : `Proposes to ${n(m.to)}: ${slot ? formatSlot(slot) : 'a time'}`;
     case 'ACCEPT':
       return `${n(m.from)} says yes to the time`;
     case 'COUNTER':
@@ -106,4 +106,49 @@ export function describeMessage(m: Message, names: Record<string, string>): stri
     default:
       return String(m.kind);
   }
+}
+
+export interface TicketJob {
+  taskId: string;
+  label: string;
+  owner: string | null;
+  state: 'offered' | 'accepted' | 'passed';
+  /** People who passed on this job, oldest first. */
+  passedBy: string[];
+}
+
+export interface TicketView {
+  slot: Interval | null;
+  jobs: TicketJob[];
+  attendees: number;
+  committed: boolean;
+  cancelled: string | null;
+}
+
+/** The party ticket as it looks after `shown` messages: the time, and who holds each job. */
+export function ticketView(messages: Message[], shown: number): TicketView {
+  const count = Math.max(0, Math.min(messages.length, Math.floor(shown)));
+  const jobs = new Map<string, TicketJob>();
+  let slot: Interval | null = null;
+  let committed = false;
+  let cancelled: string | null = null;
+  const yes = new Set<string>();
+  for (let i = 0; i < count; i++) {
+    const m = messages[i]!;
+    const taskId = typeof m.body.taskId === 'string' ? m.body.taskId : '';
+    if (m.kind === 'PROPOSE' && !slot && m.body.interval) slot = m.body.interval as Interval;
+    if (m.kind === 'ACCEPT') yes.add(m.from);
+    if (m.kind === 'TASK_OFFER') {
+      const prev = jobs.get(taskId);
+      jobs.set(taskId, { taskId, label: String(m.body.label ?? taskId), owner: m.to, state: 'offered', passedBy: prev?.passedBy ?? [] });
+    } else if (m.kind === 'TASK_ACCEPT') {
+      const j = jobs.get(taskId);
+      if (j) jobs.set(taskId, { ...j, state: 'accepted' });
+    } else if (m.kind === 'TASK_DECLINE') {
+      const j = jobs.get(taskId);
+      if (j) jobs.set(taskId, { ...j, state: 'passed', passedBy: [...j.passedBy, m.from] });
+    } else if (m.kind === 'COMMIT') committed = true;
+    else if (m.kind === 'CANCEL') cancelled = String(m.body.reason ?? 'stopped');
+  }
+  return { slot, jobs: [...jobs.values()], attendees: yes.size + (slot ? 1 : 0), committed, cancelled };
 }

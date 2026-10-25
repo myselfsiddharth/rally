@@ -53,3 +53,30 @@ describe('planMessages and describeMessage', () => {
     }
   });
 });
+
+import { ticketView } from '../src/ui/replay';
+
+describe('ticketView', () => {
+  const mk = (i: number, kind: Message['kind'], body: Record<string, unknown>, to = 'x', from = 'coordinator'): Message => ({ id: `p:${i}`, planId: 'p', at: i, from, to, kind, body });
+  const log = [
+    mk(0, 'PROPOSE', { interval: { start: 1, end: 2 } }, 'ana'),
+    mk(1, 'ACCEPT', {}, 'coordinator', 'ana'),
+    mk(2, 'TASK_OFFER', { taskId: 'cake', label: 'Bring the cake' }, 'ana'),
+    mk(3, 'TASK_DECLINE', { taskId: 'cake' }, 'coordinator', 'ana'),
+    mk(4, 'TASK_OFFER', { taskId: 'cake', label: 'Bring the cake', reassigned: true }, 'ben'),
+    mk(5, 'TASK_ACCEPT', { taskId: 'cake' }, 'coordinator', 'ben'),
+    mk(6, 'COMMIT', { readiness: 1 }, 'ana'),
+  ];
+  it('tracks who holds a job as it is passed on and re-assigned', () => {
+    expect(ticketView(log, 3).jobs).toEqual([{ taskId: 'cake', label: 'Bring the cake', owner: 'ana', state: 'offered', passedBy: [] }]);
+    expect(ticketView(log, 4).jobs[0]).toMatchObject({ owner: 'ana', state: 'passed', passedBy: ['ana'] });
+    expect(ticketView(log, 6).jobs[0]).toMatchObject({ owner: 'ben', state: 'accepted', passedBy: ['ana'] });
+  });
+  it('knows the time and when the plan is locked or stopped', () => {
+    expect(ticketView(log, 0).slot).toBeNull();
+    expect(ticketView(log, 1).slot).toEqual({ start: 1, end: 2 });
+    expect(ticketView(log, 6).committed).toBe(false);
+    expect(ticketView(log, 7).committed).toBe(true);
+    expect(ticketView([mk(0, 'CANCEL', { reason: 'party_cap' })], 1).cancelled).toBe('party_cap');
+  });
+});
