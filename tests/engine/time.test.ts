@@ -122,3 +122,12 @@ describe('constants', () => {
     expect(DAY).toBe(24 * HOUR);
   });
 });
+
+import { startOfLocalDay } from '../../src/engine/time';
+describe('startOfLocalDay', () => {
+  it('finds local midnight, including on a daylight-saving day', () => {
+    expect(startOfLocalDay(Date.UTC(2026, 9, 24, 3), 'America/Phoenix')).toBe(Date.UTC(2026, 9, 23, 7));
+    expect(startOfLocalDay(Date.UTC(2026, 10, 1, 12), 'America/New_York')).toBe(Date.UTC(2026, 10, 1, 4));
+    expect(startOfLocalDay(Date.UTC(2026, 10, 2, 3), 'America/New_York')).toBe(Date.UTC(2026, 10, 1, 4));
+  });
+});

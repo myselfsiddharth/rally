@@ -147,6 +147,12 @@ function localDates(window: Interval, tz: string): { y: number; m: number; d: nu
   return out;
 }
 
+/** The instant the local calendar day containing `ms` begins in `tz`. */
+export function startOfLocalDay(ms: Ms, tz: string): Ms {
+  const p = zonedParts(ms, tz);
+  return zonedInstant(p.year, p.month, p.day, 0, tz);
+}
+
 /** Blocks of quiet time (e.g. 22:00 to 08:00 local) clipped to the window. */
 export function quietBlocks(window: Interval, tz: string, startHour: number, endHour: number): Interval[] {
   const blocks: Interval[] = [];

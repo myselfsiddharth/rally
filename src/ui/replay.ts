@@ -60,9 +60,9 @@ const REASONS: Record<string, string> = {
 const PHOENIX = 'America/Phoenix';
 
 /** "Fri Oct 30, 5:00 to 8:00 pm" in Phoenix time. */
-export function formatSlot(i: Interval): string {
-  const day = new Intl.DateTimeFormat('en-US', { timeZone: PHOENIX, weekday: 'short', month: 'short', day: 'numeric' }).format(i.start);
-  const time = (ms: number) => new Intl.DateTimeFormat('en-US', { timeZone: PHOENIX, hour: 'numeric', minute: '2-digit' }).format(ms).replace(' ', '').toLowerCase();
+export function formatSlot(i: Interval, tz: string = PHOENIX): string {
+  const day = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric' }).format(i.start);
+  const time = (ms: number) => new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(ms).replace(' ', '').toLowerCase();
   return `${day}, ${time(i.start)} to ${time(i.end)}`;
 }
 
