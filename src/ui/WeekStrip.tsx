@@ -21,13 +21,13 @@ export function WeekStrip({ people, names, busy, slot }: { people: string[]; nam
 
   const rects: { x: number; w: number; y: number; key: string }[] = [];
   people.forEach((p, row) => {
-    for (const b of busy[p] ?? []) {
+    (busy[p] ?? []).forEach((b, i) => {
       for (let d = 0; d < 7; d++) {
         const from = Math.max(b.start, weekStart + d * DAY + FIRST_HOUR * HOUR);
         const to = Math.min(b.end, weekStart + d * DAY + (FIRST_HOUR + SPAN_H) * HOUR);
-        if (to > from) rects.push({ x: x(d, from), w: Math.max(1, x(d, to) - x(d, from)), y: TOP + row * (ROW_H + GAP), key: `${p}-${b.start}-${d}` });
+        if (to > from) rects.push({ x: x(d, from), w: Math.max(1, x(d, to) - x(d, from)), y: TOP + row * (ROW_H + GAP), key: `${p}-${b.start}-${d}-${i}` });
       }
-    }
+    });
   });
   const slotDay = Math.floor((phoenixMidnight(slot.start) - weekStart) / DAY);
   const bandX = x(slotDay, slot.start);

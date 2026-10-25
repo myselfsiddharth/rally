@@ -24,6 +24,7 @@ const Option: z.ZodType<DiscordOption> = z.lazy(() =>
 
 export const InteractionSchema = z.object({
   type: z.number(),
+  token: z.string().optional(),
   channel_id: z.string().optional(),
   member: z.object({ user: User }).optional(),
   user: User.optional(),

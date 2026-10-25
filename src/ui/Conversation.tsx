@@ -36,7 +36,7 @@ export function Conversation({ messages, shown, highlights, names }: { messages:
     <ol className="convo" role="log" aria-label="Agent conversation">
       {visible.length === 0 && <li className="convo-empty">Press play to watch the agents plan this.</li>}
       {visible.map((m, i) => (
-        <li key={m.id} className={`line kind-${m.kind.toLowerCase()}${highlights.includes(i) ? ' line-hot' : ''}`} ref={i === visible.length - 1 ? end : undefined}>
+        <li key={`${m.id}-${i}`} className={`line kind-${m.kind.toLowerCase()}${highlights.includes(i) ? ' line-hot' : ''}`} ref={i === visible.length - 1 ? end : undefined}>
           <Avatar id={m.from} name={names[m.from] ?? 'Rally'} />
           <div className="line-text">
             <p>{describeMessage(m, names)}</p>

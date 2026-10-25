@@ -123,8 +123,8 @@ export function SimApp() {
               </div>
               <ul className="plan-list">
                 {tab === 'parties'
-                  ? data.parties.map((p) => (
-                      <li key={p.id}>
+                  ? data.parties.map((p, i) => (
+                      <li key={`${p.id}-${i}`}>
                         <button type="button" className="plan" aria-current={selected === p.id} onClick={() => select(p.id)}>
                           <span className="plan-title">{p.title}</span>
                           <span className="plan-sub">
@@ -139,8 +139,8 @@ export function SimApp() {
                         </button>
                       </li>
                     ))
-                  : data.pairs.map((p) => (
-                      <li key={p.id}>
+                  : data.pairs.map((p, i) => (
+                      <li key={`${p.id}-${i}`}>
                         <button type="button" className="plan" aria-current={selected === p.id} onClick={() => select(p.id)}>
                           <span className="plan-title">
                             {names[p.a]} and {names[p.b]}
