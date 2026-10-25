@@ -224,3 +224,90 @@ describe('surprise party', () => {
     expect(Object.values(h.plan.tasks!.owner)).not.toContain('hon');
   });
 });
+
+describe('backing out after the plan is set', () => {
+  function committed(overrides: Partial<Parameters<typeof newParty>[0]> = {}) {
+    const h = harness(overrides);
+    h.collect();
+    h.rsvpAll();
+    h.acceptAll();
+    expect(h.plan.status).toBe('committed');
+    return h;
+  }
+
+  it('lets a guest without a job leave: only the host is told and the plan stays on', () => {
+    const h = committed();
+    const jobless = h.plan.guests.find((g) => g !== 'hon' && g !== 'ben' && !Object.values(h.plan.tasks!.owner).includes(g));
+    const who = jobless ?? 'eli';
+    const before = h.log.length;
+    h.send('withdraw', { person: who });
+    expect(h.plan.rsvp[who]).toBe('no');
+    const sent = h.log.slice(before);
+    expect(sent.filter((m) => m.kind === 'WITHDREW').map((m) => m.to)).toEqual(['ben']);
+    expect(sent.some((m) => m.kind === 'CANCEL')).toBe(false);
+  });
+
+  it('hands a leaver\'s job to the backup, reopens the plan, and re-locks it without telling everyone again', () => {
+    const h = committed();
+    const owner = h.plan.tasks!.owner.cake!;
+    const commitsBefore = h.log.filter((m) => m.kind === 'COMMIT').length;
+    const loadBefore = JSON.stringify(h.ledger);
+    h.send('withdraw', { person: owner });
+    const successor = h.plan.tasks!.owner.cake!; // the backup, or the next eligible person if the backup is already full
+    expect(successor).not.toBe(owner);
+    expect(h.plan.tasks!.declinedBy.cake).toContain(owner);
+    expect(h.plan.status).toBe('assigning');
+    expect(h.log.some((m) => m.kind === 'TASK_OFFER' && m.to === successor && m.body.reassigned)).toBe(true);
+    const note = h.log.filter((m) => m.kind === 'WITHDREW').at(-1)!;
+    expect(note.to).toBe('ben');
+    expect((note.body.handed as { taskId: string; to: string }[]).find((x) => x.taskId === 'cake')?.to).toBe(successor);
+    h.send('task_accept', { person: successor, taskId: 'cake' });
+    expect(h.plan.status).toBe('committed');
+    const after = h.log.filter((m) => m.kind === 'COMMIT');
+    expect(after.length).toBe(commitsBefore + 1); // one quiet update, not a second announcement
+    expect(after.at(-1)!.to).toBe('ben');
+    expect(after.at(-1)!.body.update).toBe(true);
+    expect(JSON.stringify(h.ledger)).not.toBe(loadBefore); // the new owner now carries the job
+  });
+
+  it('never charges the same job to the same person twice', () => {
+    const h = committed();
+    const total = (l: { load: Record<string, number> }) => Object.values(l.load).reduce((a, b) => a + b, 0);
+    const first = total(h.ledger);
+    const owner = h.plan.tasks!.owner.cake!;
+    h.send('withdraw', { person: owner });
+    h.send('task_accept', { person: h.plan.tasks!.owner.cake!, taskId: 'cake' });
+    const weight = h.plan.tasks!.specs.find((s) => s.id === 'cake')!.weight;
+    expect(total(h.ledger)).toBe(first + weight);
+  });
+
+  it('cancels for everyone if the host backs out', () => {
+    const h = committed();
+    h.send('withdraw', { person: 'ben' });
+    expect(h.plan.status).toBe('cancelled');
+    expect(h.plan.reason).toBe('host_withdrew');
+    expect(h.log.filter((m) => m.kind === 'CANCEL' && m.body.reason === 'host_withdrew').length).toBeGreaterThan(2);
+  });
+
+  it('ignores a withdrawal from someone who never said yes, and a second one', () => {
+    const h = harness();
+    h.collect();
+    h.send('withdraw', { person: 'ana' }); // still collecting: nothing to withdraw from
+    h.rsvpAll();
+    const snapshot = h.plan.rsvp.ana;
+    h.send('withdraw', { person: 'ana' });
+    expect(h.plan.rsvp.ana).toBe('no');
+    const count = h.log.length;
+    h.send('withdraw', { person: 'ana' });
+    expect(h.log.length).toBe(count);
+    expect(snapshot).toBe('yes');
+  });
+
+  it('cancels when too few are left', () => {
+    const h = harness({ guests: ['ana', 'cy'], honoree: null });
+    h.collect();
+    h.rsvpAll();
+    for (const g of ['ana', 'cy']) if (h.plan.rsvp[g] === 'yes') h.send('withdraw', { person: g });
+    expect(['cancelled', 'no_slot']).toContain(h.plan.status);
+  });
+});

@@ -33,6 +33,10 @@ export interface PartyPlan {
   slot?: SlotOption;
   rsvp: Record<PersonId, 'yes' | 'no'>;
   tasks?: PlanTasks;
+  /** When the plan first locked in. Later changes after a withdrawal do not re-announce it. */
+  lockedAt?: Ms;
+  /** Which owner/job pairs already counted toward the fairness ledger. */
+  charged?: string[];
   reassigned: number;
   hostNotified: string[];
   seen: string[];
@@ -42,7 +46,7 @@ export interface PartyPlan {
 export type PartyEvent = {
   id: string;
   at: Ms;
-  type: 'start' | 'availability' | 'timeout' | 'rsvp_yes' | 'rsvp_no' | 'task_accept' | 'task_decline' | 'host_waive' | 'host_assign' | 'cancel';
+  type: 'start' | 'availability' | 'timeout' | 'rsvp_yes' | 'rsvp_no' | 'task_accept' | 'task_decline' | 'host_waive' | 'host_assign' | 'cancel' | 'withdraw';
   person?: PersonId;
   taskId?: string;
   target?: PersonId;
@@ -125,15 +129,26 @@ export function reduceParty(plan: PartyPlan, ev: PartyEvent, ctx: PartyContext):
       p.status = 'committed';
       const next: Ledger = { load: { ...ledger.load } };
       const owners: Record<string, string> = {};
+      const charged = (p.charged ??= []);
       for (const spec of tasks.specs) {
         const owner = tasks.owner[spec.id];
         if (owner && tasks.state[spec.id] === 'accepted') {
           owners[spec.id] = owner;
-          next.load[owner] = (next.load[owner] ?? 0) + spec.weight;
+          const key = `${spec.id}:${owner}`;
+          if (!charged.includes(key)) {
+            charged.push(key);
+            next.load[owner] = (next.load[owner] ?? 0) + spec.weight;
+          }
         }
       }
       ledger = next;
-      for (const who of attendeesNow()) if (visibleTo(who)) say(who, 'COMMIT', { interval: p.slot!.interval, owners, readiness: readiness(tasks) });
+      const body = { interval: p.slot!.interval, owners, readiness: readiness(tasks) };
+      if (p.lockedAt === undefined) {
+        p.lockedAt = ev.at;
+        for (const who of attendeesNow()) if (visibleTo(who)) say(who, 'COMMIT', body);
+      } else {
+        say(p.host, 'COMMIT', { ...body, update: true }); // back on after someone dropped out: tell the host, not everyone again
+      }
       return;
     }
     flagHost();
@@ -261,6 +276,36 @@ export function reduceParty(plan: PartyPlan, ev: PartyEvent, ctx: PartyContext):
       p.tasks = { ...p.tasks, owner: { ...p.tasks.owner, [ev.taskId]: ev.target }, state: { ...p.tasks.state, [ev.taskId]: 'offered' } };
       say(ev.target, 'TASK_OFFER', { taskId: ev.taskId, label: p.tasks.specs.find((s) => s.id === ev.taskId)?.label, byHost: true });
       refresh();
+      return done();
+    }
+    case 'withdraw': {
+      if (!['proposed', 'assigning', 'needs_host', 'committed'].includes(p.status) || !ev.person || !p.guests.includes(ev.person) || p.rsvp[ev.person] !== 'yes') return ignore();
+      p.rsvp[ev.person] = 'no';
+      if (ev.person === p.host) {
+        end('cancelled', 'host_withdrew', attendeesNow());
+        return done();
+      }
+      if (attendeesNow().length < 2) {
+        end('cancelled', 'too_few', p.guests.filter((g) => g !== ev.person));
+        return done();
+      }
+      const handed: { taskId: string; label?: string; to: PersonId | null }[] = [];
+      if (p.tasks) {
+        const pool = peopleFor(attendeesNow());
+        const excluded = p.honoree ? [p.honoree] : [];
+        const involved = p.tasks.specs.filter((s) => p.tasks!.owner[s.id] === ev.person || p.tasks!.backup[s.id] === ev.person);
+        for (const spec of involved) {
+          const wasOwner = p.tasks.owner[spec.id] === ev.person;
+          p.tasks = decline(p.tasks, spec.id, ev.person, pool, ledger, excluded);
+          if (!wasOwner) continue;
+          const to = p.tasks.owner[spec.id] ?? null;
+          handed.push({ taskId: spec.id, label: spec.label, to });
+          p.reassigned++;
+          if (to) say(to, 'TASK_OFFER', { taskId: spec.id, label: spec.label, weight: spec.weight, totalWeight: p.tasks.specs.reduce((sum, s) => sum + s.weight, 0), reassigned: true });
+        }
+      }
+      say(p.host, 'WITHDREW', { person: ev.person, handed });
+      if (p.tasks) refresh();
       return done();
     }
     case 'cancel': {

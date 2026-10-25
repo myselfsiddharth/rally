@@ -12,7 +12,7 @@ export interface PairPlan {
   seq: number;
 }
 
-export type PairEvent = { id: string; at: Ms; type: 'start' | 'a_yes' | 'a_no' | 'b_yes' | 'b_no' | 'timeout' };
+export type PairEvent = { id: string; at: Ms; type: 'start' | 'a_yes' | 'a_no' | 'b_yes' | 'b_no' | 'timeout' | 'withdraw'; person?: PersonId };
 
 export function newPair(p: { id: string; a: PersonId; b: PersonId; interval: Interval }): PairPlan {
   return { ...p, status: 'new', seen: [], seq: 0 };
@@ -62,6 +62,12 @@ export function reducePair(plan: PairPlan, ev: PairEvent, ctx: { governor: Gover
       say(p.b, 'coordinator', 'PAIR_NO');
       say('coordinator', p.a, 'PAIR_NO', { text: 'Not this time.' });
       return { plan: p, out };
+    case 'withdraw': {
+      if (p.status !== 'confirmed' || (ev.person !== p.a && ev.person !== p.b)) return ignore();
+      p.status = 'dropped';
+      say('coordinator', ev.person === p.a ? p.b : p.a, 'WITHDREW', { person: ev.person, interval: p.interval });
+      return { plan: p, out };
+    }
     case 'timeout':
       if (p.status !== 'asking_a' && p.status !== 'asking_b') return ignore();
       p.status = 'dropped';

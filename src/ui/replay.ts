@@ -97,6 +97,8 @@ export function describeMessage(m: Message, names: Record<string, string>): stri
       return `${n(m.to)} gets the locked plan: ${slot ? formatSlot(slot) : ''}`.trim();
     case 'CANCEL':
       return `Plan stopped: ${REASONS[String(m.body.reason)] ?? String(m.body.reason)}`;
+    case 'WITHDREW':
+      return m.to === 'coordinator' || m.to === m.body.person ? `${n(String(m.body.person ?? m.from))} can't come anymore` : `${n(String(m.body.person ?? m.from))} can't come anymore, so ${n(m.to)} is told`;
     case 'PAIR_ASK':
       return `Asks ${n(m.to)} if they would like to hang out with ${n(String(m.body.with))} ${slot ? formatSlot(slot) : ''}`.trim();
     case 'PAIR_YES':

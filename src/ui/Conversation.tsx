@@ -18,6 +18,7 @@ const KIND_LABEL: Record<MessageKind, string> = {
   PAIR_NO: 'declined',
   CANCEL: 'stops',
   NEEDS_HOST: 'asks the host',
+  WITHDREW: 'backs out',
 };
 
 const stamp = (ms: number) =>

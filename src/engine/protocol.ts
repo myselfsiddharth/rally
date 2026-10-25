@@ -17,6 +17,7 @@ export const MESSAGE_KINDS = [
   'PAIR_NO',
   'CANCEL',
   'NEEDS_HOST',
+  'WITHDREW',
 ] as const;
 
 export type MessageKind = (typeof MESSAGE_KINDS)[number];

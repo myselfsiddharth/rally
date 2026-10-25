@@ -125,12 +125,26 @@ function offsetAt(ms: Ms, tz: string): number {
   return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(ms / 1000) * 1000;
 }
 
-/** The UTC instant at which the wall clock in `tz` reads y-m-d hour:00 (day may overflow, e.g. day 32). */
-function zonedInstant(y: number, m: number, d: number, hour: number, tz: string): Ms {
-  const wall = Date.UTC(y, m - 1, d, hour);
+/** The UTC instant at which the wall clock in `tz` reads y-m-d hour:minute (day may overflow, e.g. day 32). */
+export function localToInstant(y: number, m: number, d: number, hour: number, minute: number, tz: string): Ms {
+  const wall = Date.UTC(y, m - 1, d, hour, minute);
   let t = wall - offsetAt(wall, tz);
   t = wall - offsetAt(t, tz);
   return t;
+}
+
+function zonedInstant(y: number, m: number, d: number, hour: number, tz: string): Ms {
+  return localToInstant(y, m, d, hour, 0, tz);
+}
+
+/** True if `tz` is a time zone name this runtime knows, such as America/New_York. */
+export function isValidTimezone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    return /^[A-Za-z_]+(\/[A-Za-z_+-]+)+$/.test(tz) || tz === 'UTC';
+  } catch {
+    return false;
+  }
 }
 
 /** Local calendar dates (as y/m/d) covering a window, with one day of padding on each side. */

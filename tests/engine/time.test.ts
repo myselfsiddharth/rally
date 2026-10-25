@@ -131,3 +131,17 @@ describe('startOfLocalDay', () => {
     expect(startOfLocalDay(Date.UTC(2026, 10, 2, 3), 'America/New_York')).toBe(Date.UTC(2026, 10, 1, 4));
   });
 });
+
+import { isValidTimezone, localToInstant } from '../../src/engine/time';
+describe('localToInstant and isValidTimezone', () => {
+  it('turns a local date and time into the right instant, across daylight saving', () => {
+    expect(localToInstant(2026, 11, 14, 19, 30, 'America/Phoenix')).toBe(Date.UTC(2026, 10, 15, 2, 30));
+    expect(localToInstant(2026, 11, 2, 19, 30, 'America/New_York')).toBe(Date.UTC(2026, 10, 3, 0, 30)); // after fall back: UTC-5
+    expect(localToInstant(2026, 10, 30, 19, 30, 'America/New_York')).toBe(Date.UTC(2026, 9, 30, 23, 30)); // before: UTC-4
+    expect(localToInstant(2026, 3, 9, 8, 0, 'Asia/Kolkata')).toBe(Date.UTC(2026, 2, 9, 2, 30));
+  });
+  it('accepts real zone names and rejects anything else', () => {
+    for (const ok of ['America/New_York', 'America/Phoenix', 'Europe/London', 'Asia/Kolkata', 'UTC', 'America/Argentina/Buenos_Aires']) expect(isValidTimezone(ok)).toBe(true);
+    for (const bad of ['', 'nope', 'Mars/Base', 'EST', 'America/New_York; drop table', '../etc/passwd']) expect(isValidTimezone(bad)).toBe(false);
+  });
+});

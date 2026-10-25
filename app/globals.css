@@ -160,7 +160,7 @@ table.shares { border-collapse: collapse; width: 100%; min-width: 640px; }
 .pill { font-weight: 700; padding: 0 9px; border-radius: var(--radius-chip); background: var(--fog); color: var(--ink); }
 .pill-task_accept, .pill-accept, .pill-commit, .pill-pair_yes { background: var(--mint); }
 .pill-task_decline, .pill-counter, .pill-cancel, .pill-pair_no { background: #ffd0e0; }
-.pill-needs_host { background: var(--yellow); }
+.pill-needs_host, .pill-withdrew { background: var(--yellow); }
 .line-hot { background: rgba(255, 79, 139, 0.1); border-left-color: var(--pink); }
 .side { display: grid; gap: 18px; min-width: 0; }
 .week-card, .pair-card { padding: 18px; }

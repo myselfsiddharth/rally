@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit --incremental false",
     "sim": "tsx src/sim/main.ts",
     "gen:sim": "tsx scripts/gen-sim.ts",
     "register-commands": "tsx scripts/register-commands.ts"

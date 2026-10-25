@@ -68,3 +68,28 @@ describe('pair double opt-in', () => {
     expect(governor.recentInviteCount('ben', T + 1)).toBe(0);
   });
 });
+
+describe('cancelling a confirmed coffee', () => {
+  it('tells the other person, frees the plan, and ignores everyone else', () => {
+    const governor = new Governor();
+    let plan: PairPlan = newPair({ id: 'w1', a: 'ana', b: 'ben', interval });
+    const log: Message[] = [];
+    for (const [i, type] of (['start', 'a_yes', 'b_yes'] as const).entries()) {
+      const s = reducePair(plan, { id: `e${i}`, at: T + i, type }, { governor });
+      plan = s.plan;
+    }
+    expect(plan.status).toBe('confirmed');
+    expect(reducePair(plan, { id: 'x', at: T, type: 'withdraw', person: 'cy' }, { governor }).out).toEqual([]);
+    const s = reducePair(plan, { id: 'w', at: T + 9, type: 'withdraw', person: 'ana' }, { governor });
+    log.push(...s.out);
+    expect(s.plan.status).toBe('dropped');
+    expect(log.map((m) => [m.kind, m.to])).toEqual([['WITHDREW', 'ben']]);
+    expect(log[0]!.body.person).toBe('ana');
+  });
+  it('does nothing before the coffee is confirmed', () => {
+    const governor = new Governor();
+    let plan: PairPlan = newPair({ id: 'w2', a: 'ana', b: 'ben', interval });
+    plan = reducePair(plan, { id: 's', at: T, type: 'start' }, { governor }).plan;
+    expect(reducePair(plan, { id: 'w', at: T, type: 'withdraw', person: 'ana' }, { governor }).out).toEqual([]);
+  });
+});
