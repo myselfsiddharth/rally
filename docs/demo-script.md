@@ -16,7 +16,9 @@ Open *Who was free*: grey is busy, pink is the chosen time. Say: "The agents nev
 
 **2:05 Prove it (30 seconds).** The safety checks panel: caps broken 0, private details leaked 0, people double booked 0. Switch to Run 3, Run 5: same zeros. In the terminal: `npm run sim -- --seed 7`, then `npm test` (193 tests). "Those three checks are computed from the raw message log, separately from the planner."
 
-**2:35 The real thing (25 seconds).** Show Discord: `/rally plan occasion:hangout`, a friend's DM with *I'm in* and *Can't make it* buttons, `/rally prefs`. "Same engine, real calendars. The Discord and Google paths are tested against fakes; here is the deploy guide for connecting live accounts."
+**2:35 The real thing (25 seconds).** In Discord, in your own server: `/rally newcircle`, `/rally demo` (three fictional friends, labelled), then `/rally plan occasion:halloween`. Show your DMs: a job offered with *I'll take it* and *Pass*, and "Someone had to drop this one" when a demo friend passes. Take the jobs; the plan locks in, the channel announces who does what, and the event lands on your calendar. Then tap *Can't come anymore* to show the plan reopening cleanly. (Older version of this beat follows.)
+
+**2:35 (older version).** Show Discord: `/rally plan occasion:hangout`, a friend's DM with *I'm in* and *Can't make it* buttons, `/rally prefs`. "Same engine, real calendars. The Discord and Google paths are tested against fakes; here is the deploy guide for connecting live accounts."
 
 **Be ready for**
 - *What decides, the model?* No. The engine decides; a model can only reword fixed messages, and its text is rejected if it drops a name or a time or trips the hard-line filter.

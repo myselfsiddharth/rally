@@ -7,7 +7,7 @@ It spots the birthday, finds the evening everyone is free, hands out the jobs, a
 
 [![CI](https://github.com/myselfsiddharth/rally/actions/workflows/ci.yml/badge.svg)](https://github.com/myselfsiddharth/rally/actions/workflows/ci.yml)
 ![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6)
-![192 tests](https://img.shields.io/badge/tests-200-brightgreen)
+![192 tests](https://img.shields.io/badge/tests-226-brightgreen)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
 Built at DevHacks 2026 for the Cubbie Hackathon, Track 2: agents for different students that coordinate toward a shared outcome.
@@ -27,6 +27,14 @@ College friendships die of logistics, not dislike. Everyone is busy, nobody know
 **Pair mode.** The agents keep noticing two friends who both have an open evening hour and have not met lately, and offer a coffee. **Double opt-in:** the second person is only asked after the first says yes, so nobody ever learns they were turned down. Two yeses put it on both calendars.
 
 **The student stays in charge.** Agents propose; students decide. Nothing goes on a calendar, and no job is anyone's, until they say yes.
+
+**Real life gets in the way, and the plan copes.**
+- **Backing out after it locks in:** one tap removes the event from your calendar and tells the host. If you had a job, it passes to the next best person, and the plan re-locks quietly without announcing itself to everyone again. If the host backs out, the party is called off for all.
+- **Reminders:** one the day before, with your own jobs in it. Nothing late, nothing twice.
+- **Announcements:** when a plan locks in, the circle's channel hears who is doing what. Never for a surprise party.
+- **Your time zone:** every time and every quiet hour is in the recipient's own zone.
+- **Concerts and events:** give a title, date, time and length, and the agents check who can actually be there.
+- **Try it alone:** `/rally demo` adds three clearly labelled fictional friends whose agents answer on their own, so one person can watch a whole plan, including a job being handed over.
 
 ## See it work
 
@@ -113,7 +121,7 @@ The three safety checks are computed from the raw message log by code that is in
 
 ```bash
 npm install
-npm test                 # 200 tests: engine, privacy and cap properties, simulation invariants, adapters
+npm test                 # 226 tests: engine, privacy and cap properties, simulation invariants, adapters
 npm run typecheck
 npm run sim -- --seed 7 --students 30 --weeks 8
 npm run gen:sim          # regenerate the five bundled replay runs
