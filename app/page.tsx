@@ -4,21 +4,33 @@ import {
   ArrowRight,
   BellRinging,
   CalendarCheck,
+  CalendarPlus,
   CheckCircle,
   Coffee,
   Confetti,
+  DiscordLogo,
   EyeSlash,
   Flag,
   ListChecks,
   SealCheck,
+  ShareNetwork,
+  UsersThree,
 } from '@phosphor-icons/react/dist/ssr';
 import index from '../public/sim/index.json';
+import { GUIDE } from '../src/app/guide';
 import { HeroTicket } from '../src/ui/HeroTicket';
 import { SiteFooter, SiteHeader } from '../src/ui/SiteChrome';
 
 type Row = { metrics: { partiesCommitted: number; tasksReassigned: number; pairMeetups: number; capViolations: number; labelLeaks: number; doubleBookings: number; occasionsFolded: number; messageCount: number } };
 const runs = (index.seeds as unknown as Row[]).map((s) => s.metrics);
 const sum = (f: (m: Row['metrics']) => number) => runs.reduce((a, m) => a + f(m), 0);
+
+const START = [
+  { icon: DiscordLogo, title: 'Add Rally to your server', text: <>Pick the Discord server where your friends already are. You need permission to add apps there.</>, cta: true },
+  { icon: UsersThree, title: 'Make a circle', text: <>In the channel your friends use, type <code>/rally newcircle name:Dorm</code>. Rally gives you a short join code.</> },
+  { icon: ShareNetwork, title: 'Friends join', text: <>Each friend types <code>/rally join code:ABC123</code>. They need to be in the same server so Rally can message them.</> },
+  { icon: CalendarPlus, title: 'Plan something', text: <>Type <code>/rally plan occasion:hangout</code>. Everyone gets a message with buttons, and nobody has to chase anybody.</> },
+];
 
 const STEPS = [
   { icon: BellRinging, title: 'An agent notices', text: "A friend's birthday is ten days away." },
@@ -53,13 +65,14 @@ export default function Home() {
                 Rally gives every student a personal agent. It finds the night everyone can come, hands out the jobs, and only comes to you when it needs a yes.
               </p>
               <div className="hero-actions">
-                <Link className="btn btn-lg" href="/sim">
-                  Watch a month of plans <ArrowRight size={20} weight="bold" aria-hidden="true" />
-                </Link>
-                <a className="text-link" href="#rules">
-                  See what stays private <ArrowDown size={18} weight="bold" aria-hidden="true" />
+                <a className="btn btn-lg" href="/add">
+                  <DiscordLogo size={22} weight="fill" aria-hidden="true" /> Add Rally to Discord
                 </a>
+                <Link className="text-link" href="/sim">
+                  Watch a month of plans <ArrowRight size={18} weight="bold" aria-hidden="true" />
+                </Link>
               </div>
+              <p className="hero-fine">Free, and about two minutes to set up. Your agent only ever sees when you are busy, never why.</p>
             </div>
             <HeroTicket />
           </section>
@@ -67,6 +80,26 @@ export default function Home() {
       </div>
 
       <div className="page">
+        <section className="section split" id="start" aria-labelledby="start-h">
+          <div className="split-head">
+            <h2 id="start-h" className="section-title">Start in two minutes</h2>
+            <p className="section-lede">Four steps, all inside Discord. Just looking? Run <code>/rally demo</code> after step 2 and three fictional friends join, so you can watch a whole plan on your own.</p>
+            <p className="start-aside">Not on Discord? <Link className="text-link" href="/sim">Watch a simulated month <ArrowRight size={16} weight="bold" aria-hidden="true" /></Link></p>
+          </div>
+          <ol className="timeline">
+            {START.map(({ icon: Icon, title, text, cta }) => (
+              <li key={title}>
+                <span className="node" aria-hidden="true"><Icon size={24} weight="bold" /></span>
+                <div>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                  {cta && <a className="btn btn-sm step-cta" href="/add">Add to Discord</a>}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
         <section className="section" id="modes" aria-labelledby="modes-h">
           <h2 id="modes-h" className="section-title">Two kinds of plans</h2>
           <div className="modes">
@@ -196,6 +229,39 @@ export default function Home() {
                 Replay any run <ArrowRight size={20} weight="bold" aria-hidden="true" />
               </Link>
             </div>
+          </div>
+        </section>
+        <section className="section" id="commands" aria-labelledby="commands-h">
+          <h2 id="commands-h" className="section-title">Every command</h2>
+          <p className="section-lede">Stuck at any point? Type <code>/rally help</code> in Discord for this same list.</p>
+          <div className="table-wrap">
+            <table className="shares commands">
+              <thead>
+                <tr><th scope="col">Type this</th><th scope="col">What it does</th></tr>
+              </thead>
+              <tbody>
+                {GUIDE.map((g) => (
+                  <tr key={g.command}>
+                    <th scope="row"><code>{g.command}</code></th>
+                    <td data-label="What it does">{g.what}</td>
+                  </tr>
+                ))}
+                <tr>
+                  <th scope="row"><code>/rally help</code></th>
+                  <td data-label="What it does">Show this guide inside Discord.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="section" id="launch" aria-labelledby="launch-h">
+          <div className="launch">
+            <h2 id="launch-h">Give your group chat a planner.</h2>
+            <p>Add Rally to your server and the first plan is one command away.</p>
+            <a className="btn btn-yellow btn-lg" href="/add">
+              <DiscordLogo size={22} weight="fill" aria-hidden="true" /> Add Rally to Discord
+            </a>
           </div>
         </section>
       </div>

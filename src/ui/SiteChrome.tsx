@@ -16,12 +16,12 @@ export function SiteHeader({ current }: { current?: 'home' | 'sim' | 'privacy' }
     <header className="top">
       <Logo />
       <nav aria-label="Main">
-        <Link href="/#modes" className="nav-link">What it plans</Link>
-        <Link href="/#how" className="nav-link">How it works</Link>
+        <Link href="/#start" className="nav-link">How to start</Link>
         <Link href="/#rules" className="nav-link">What stays private</Link>
-        <Link href="/sim" className="btn btn-sm" aria-current={current === 'sim' ? 'page' : undefined}>
+        <Link href="/sim" className="nav-link" aria-current={current === 'sim' ? 'page' : undefined}>
           Watch it work
         </Link>
+        <a href="/add" className="btn btn-sm">Add to Discord</a>
       </nav>
     </header>
   );
@@ -36,6 +36,8 @@ export function SiteFooter() {
           <p className="footer-note">Built at DevHacks 2026 for the Cubbie Hackathon, Track 2.</p>
         </div>
         <nav aria-label="Footer">
+          <a href="/add">Add to Discord</a>
+          <Link href="/#commands">Commands</Link>
           <Link href="/sim">Watch it work</Link>
           <Link href="/privacy">Privacy</Link>
           <a href="https://github.com/myselfsiddharth/rally">

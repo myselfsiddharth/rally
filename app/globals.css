@@ -358,3 +358,14 @@ table.shares { border-collapse: collapse; width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
+
+/* getting started */
+.hero-fine { margin-top: 18px; max-width: 32em; font-size: 0.95rem; opacity: 0.85; }
+.start-aside { margin-top: 20px; }
+.step-cta { margin-top: 14px; }
+.timeline p code { font-size: 0.88em; }
+.commands tbody th { width: 38%; font-family: inherit; font-weight: 400; }
+.commands tbody th code { background: var(--fog); padding: 0.25em 0.55em; border-radius: 8px; font-size: 0.92rem; font-weight: 600; word-break: break-word; }
+.launch { margin-top: 0; padding: clamp(32px, 5vw, 56px); background: var(--ink); color: var(--paper); border-radius: var(--radius-panel); }
+.launch h2 { font-size: clamp(1.9rem, 3.4vw, 2.7rem); font-weight: 800; max-width: 16em; }
+.launch p { margin: 12px 0 28px; max-width: 30em; color: #d9d4f2; font-size: 1.1rem; }

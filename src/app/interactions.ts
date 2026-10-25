@@ -3,6 +3,7 @@ import { passesHardLines } from '../lib/filter';
 import { HOUR, DAY, isValidTimezone, localToInstant } from '../engine/time';
 import { actorOf, InteractionSchema, type DiscordOption, type Interaction } from '../adapters/platform/discord';
 import type { Orchestrator } from './orchestrator';
+import { WELCOME_HINT, helpText } from './guide';
 import type { Occasion } from '../engine/tasks';
 import type { Budget } from '../engine/types';
 
@@ -71,7 +72,17 @@ export async function handleInteraction(raw: unknown, ctx: InteractionContext): 
 async function command(i: Interaction, actor: { id: string; name: string }, ctx: InteractionContext): Promise<Reply> {
   const { sub, values } = flatten(i.data?.options);
   const app = ctx.app;
+  if (sub === 'help') return reply(helpText());
+  const isNew = !(await app.person(actor.id));
   await app.ensurePerson(actor.id, actor.name);
+  const out = await runCommand(sub, values, i, actor, ctx);
+  const body = out.body as { data?: { content?: string } };
+  if (isNew && body.data?.content) body.data.content += WELCOME_HINT; // the first time anyone uses the bot, point them to the guide
+  return out;
+}
+
+async function runCommand(sub: string | undefined, values: Record<string, string | number | boolean>, i: Interaction, actor: { id: string; name: string }, ctx: InteractionContext): Promise<Reply> {
+  const app = ctx.app;
   switch (sub) {
     case 'newcircle': {
       const v = Strs.pick({ name: true }).safeParse(values);
@@ -160,6 +171,6 @@ async function command(i: Interaction, actor: { id: string; name: string }, ctx:
       await app.forget(actor.id);
       return reply('Everything Rally knew about you is deleted, including your calendar link.');
     default:
-      return reply('Try /rally status.');
+      return reply('I do not know that one. Try `/rally help`.');
   }
 }

@@ -40,6 +40,7 @@ export const RALLY_COMMAND = {
   name: 'rally',
   description: 'Your personal planning agent',
   options: [
+    opt(SUB, 'help', 'A two-minute guide to what Rally does and which command to use'),
     opt(SUB, 'newcircle', 'Start a friend circle in this channel', { options: [opt(STRING, 'name', 'What to call it', { required: true, max_length: 40 })] }),
     opt(SUB, 'join', 'Join a friend circle with a code', { options: [opt(STRING, 'code', 'The code a friend gave you', { required: true, max_length: 12 })] }),
     opt(SUB, 'connect', 'Connect your Google Calendar (only free and busy times are shared)'),

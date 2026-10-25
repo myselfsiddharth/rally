@@ -17,7 +17,7 @@ Copy `.env.example` to `.env.local` and fill it in as you go.
 3. OAuth2, then URL Generator: scopes `bot` and `applications.commands`; bot permissions Send Messages. Open the link and add the bot to a test server.
 4. Enable Developer Mode in Discord settings, right-click your test server, Copy Server ID into `DISCORD_DEV_GUILD_ID` (commands update instantly for one server).
 5. Later, after Vercel is set up, set **Interactions Endpoint URL** to `https://YOUR-APP.vercel.app/api/discord`. Discord sends a signed ping to verify it.
-6. Register the command: `npm run register-commands`.
+6. Register the command: `npm run register-commands`. With `DISCORD_DEV_GUILD_ID` set it registers for that one server (instant, good while developing). **Before a public launch, unset it and run the command again so `/rally` is registered globally** and works in every server that adds the bot, then delete the server-only copy to avoid seeing the command twice.
 
 ## 3. Google Calendar (optional)
 

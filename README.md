@@ -7,7 +7,7 @@ It spots the birthday, finds the evening everyone is free, hands out the jobs, a
 
 [![CI](https://github.com/myselfsiddharth/rally/actions/workflows/ci.yml/badge.svg)](https://github.com/myselfsiddharth/rally/actions/workflows/ci.yml)
 ![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6)
-![226 tests](https://img.shields.io/badge/tests-226-brightgreen)
+![245 tests](https://img.shields.io/badge/tests-245-brightgreen)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
 Built at DevHacks 2026 for the Cubbie Hackathon, Track 2: agents for different students that coordinate toward a shared outcome.
@@ -15,6 +15,16 @@ Built at DevHacks 2026 for the Cubbie Hackathon, Track 2: agents for different s
 <img src="docs/img/home.jpg" alt="Rally landing page: a party ticket whose jobs are claimed by agents" width="760">
 
 </div>
+
+## Try it
+
+**[Add Rally to your Discord server](https://rally-wine-nine.vercel.app/add)**, then in a channel your friends use:
+
+1. `/rally newcircle name:Dorm` makes a circle and gives you a join code.
+2. Friends run `/rally join code:ABC123`.
+3. `/rally plan occasion:hangout` and everyone gets a message with buttons.
+
+On your own? Run `/rally demo` for three fictional friends who answer by themselves. Lost? `/rally help` shows the full guide, and the same list is on the [website](https://rally-wine-nine.vercel.app/#commands).
 
 ## The problem
 
@@ -121,7 +131,7 @@ The three safety checks are computed from the raw message log by code that is in
 
 ```bash
 npm install
-npm test                 # 226 tests: engine, privacy and cap properties, simulation invariants, adapters
+npm test                 # 245 tests: engine, privacy and cap properties, simulation invariants, adapters
 npm run typecheck
 npm run sim -- --seed 7 --students 30 --weeks 8
 npm run gen:sim          # regenerate the five bundled replay runs
