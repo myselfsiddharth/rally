@@ -146,9 +146,10 @@ export function reduceParty(plan: PartyPlan, ev: PartyEvent, ctx: PartyContext):
     p.tasks = assign(templateFor(p.occasion), peopleFor(yes), ledger, p.honoree ? [p.honoree] : []);
     p.status = 'assigning';
     const notes = groupNotes(peopleFor(yes));
+    const totalWeight = p.tasks.specs.reduce((sum, s) => sum + s.weight, 0);
     for (const spec of p.tasks.specs) {
       const owner = p.tasks.owner[spec.id];
-      if (owner) say(owner, 'TASK_OFFER', { taskId: spec.id, label: spec.label, notes: FOOD.has(spec.id) ? notes : [] });
+      if (owner) say(owner, 'TASK_OFFER', { taskId: spec.id, label: spec.label, weight: spec.weight, totalWeight, notes: FOOD.has(spec.id) ? notes : [] });
     }
     refresh();
   };
@@ -234,7 +235,8 @@ export function reduceParty(plan: PartyPlan, ev: PartyEvent, ctx: PartyContext):
       const owner = next.owner[ev.taskId];
       if (before === ev.person && owner) {
         p.reassigned++;
-        say(owner, 'TASK_OFFER', { taskId: ev.taskId, label: next.specs.find((s) => s.id === ev.taskId)?.label, reassigned: true });
+        const spec = next.specs.find((s) => s.id === ev.taskId);
+        say(owner, 'TASK_OFFER', { taskId: ev.taskId, label: spec?.label, weight: spec?.weight, totalWeight: next.specs.reduce((sum, s) => sum + s.weight, 0), reassigned: true });
       }
       refresh();
       return done();

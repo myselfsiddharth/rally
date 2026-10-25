@@ -423,7 +423,7 @@ export function runSim(opts: SimOptions): SimResult {
 
   const baseBusy: Record<PersonId, Interval[]> = {};
   for (const p of cohort.personas) {
-    baseBusy[p.id] = calendars[p.id]!.events.filter((e) => !e.label.startsWith('hold:') && e.interval.start < start + 14 * DAY).map((e) => e.interval);
+    baseBusy[p.id] = calendars[p.id]!.events.filter((e) => !e.label.startsWith('hold:') && e.interval.start < end).map((e) => e.interval);
   }
 
   const raw: RawRun = {
