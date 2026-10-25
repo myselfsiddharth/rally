@@ -13,6 +13,8 @@ export interface PairInput {
   governor: Governor;
   /** Do not propose anything starting sooner than this after `now`. */
   minLeadMs?: Ms;
+  /** Only friends are matched. Defaults to everyone. */
+  areFriends?: (a: PersonId, b: PersonId) => boolean;
 }
 
 export interface PairProposal {
@@ -38,6 +40,7 @@ export function proposePairs(input: PairInput): PairProposal[] {
     for (let j = i + 1; j < people.length; j++) {
       const x = people[i]!;
       const y = people[j]!;
+      if (input.areFriends && !input.areFriends(x.id, y.id)) continue;
       if (!governor.canInvitePair(x, y, now).ok) continue;
       const evenings = intersect(eveningWindows(window, x.prefs.tz), eveningWindows(window, y.prefs.tz));
       const shared = atLeast(intersectAll([x.free, y.free, evenings]), HOUR);

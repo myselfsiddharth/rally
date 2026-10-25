@@ -41,6 +41,12 @@ export class Governor {
     return recent ? { ok: false, reason: 'party_cap' } : { ok: true };
   }
 
+  /** The earliest time a new party may start in this circle (now, if the cap is clear). */
+  nextPartyAllowedAt(circle: CircleId, now: Ms): Ms {
+    const recent = (this.parties[circle] ?? []).filter((t) => now - t < PARTY_CAP_DAYS * DAY && now >= t);
+    return recent.length === 0 ? now : Math.max(...recent) + PARTY_CAP_DAYS * DAY;
+  }
+
   recordPairInvite(person: PersonId, at: Ms): void {
     (this.invites[person] ??= []).push(at);
   }

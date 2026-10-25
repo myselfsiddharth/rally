@@ -111,3 +111,13 @@ describe('property: obeying ok never exceeds a limit', () => {
     );
   });
 });
+
+describe('nextPartyAllowedAt', () => {
+  it('says when the cap clears', () => {
+    const g = new Governor();
+    expect(g.nextPartyAllowedAt('c1', T0)).toBe(T0);
+    g.recordParty('c1', T0);
+    expect(g.nextPartyAllowedAt('c1', T0 + 3 * DAY)).toBe(T0 + 14 * DAY);
+    expect(g.nextPartyAllowedAt('c1', T0 + 14 * DAY)).toBe(T0 + 14 * DAY);
+  });
+});

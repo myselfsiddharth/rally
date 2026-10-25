@@ -89,3 +89,12 @@ describe('proposePairs', () => {
     );
   });
 });
+
+describe('friends filter', () => {
+  it('only matches people who are friends', () => {
+    const people = [who('ana'), who('ben'), who('cy')];
+    const out = proposePairs({ people, lastMet: {}, now, window, governor: new Governor(), areFriends: (a, b) => [a, b].sort().join() === 'ana,cy' });
+    expect(out).toHaveLength(1);
+    expect(new Set([out[0]!.a, out[0]!.b])).toEqual(new Set(['ana', 'cy']));
+  });
+});
