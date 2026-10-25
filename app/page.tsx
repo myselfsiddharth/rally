@@ -111,7 +111,7 @@ export default function Home() {
       </main>
 
       <footer className="footer">
-        <p>Built at DevHacks 2026 for the Cubbie Hackathon, Track 2. The code is open: <a href="https://github.com/myselfsiddharth/rally">github.com/myselfsiddharth/rally</a></p>
+        <p>Built at DevHacks 2026 for the Cubbie Hackathon, Track 2. The code is open: <a href="https://github.com/myselfsiddharth/rally">github.com/myselfsiddharth/rally</a>. <Link href="/privacy">Privacy</Link></p>
       </footer>
     </>
   );

@@ -118,6 +118,9 @@ table.shares { border-collapse: collapse; width: 100%; min-width: 640px; }
 
 /* sim page */
 .sim-title { font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 800; padding-top: 16px; }
+.legal h2 { font-size: 1.35rem; font-weight: 800; margin: 32px 0 8px; }
+.legal ul { padding-left: 1.2em; display: grid; gap: 6px; max-width: 46em; }
+.legal p { max-width: 46em; margin-top: 10px; }
 .sim-lede { margin-top: 12px; max-width: 46em; color: var(--ink-soft); }
 .sim { margin-top: 28px; }
 .sim-bar { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 18px; }

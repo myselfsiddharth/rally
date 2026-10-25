@@ -312,6 +312,32 @@ describe('coffee for two', () => {
   });
 });
 
+describe('forgetting everything', () => {
+  it('leaves no trace of the person anywhere in the store, and keeps other people\'s plans working', async () => {
+    const env = setup();
+    const circle = await circleOfSix(env);
+    const res = (await env.app.startParty({ circle: circle.id, host: 'ana', occasion: 'hangout', title: 'Hang' })) as { planId: string };
+    await press(env, 'dee', action('rsvp_yes'));
+    await press(env, 'ben', action('rsvp_yes'));
+    env.clock.now = phx(10, 26, 23);
+    await env.app.updatePrefs('dee', { neverSuggest: ['ana'] });
+    await env.store.put('token', 'dee', { refreshToken: 'x' });
+    await env.store.put('outbox', 'o1', { id: 'o1', person: 'dee', text: 'held', queuedAt: 1 });
+    await env.store.put('meta', 'lastMet', { 'ben|dee': 5, 'ana|ben': 6 });
+    await env.app.forget('dee');
+    const everything = JSON.stringify(
+      await Promise.all(['person', 'circle', 'party', 'pair', 'offer', 'outbox', 'undelivered', 'demoevents', 'token', 'meta'].map((ns) => env.store.list(ns))),
+    );
+    expect(everything).not.toContain('"dee"');
+    expect(everything).not.toContain('dee|');
+    expect(everything).not.toContain('|dee');
+    const rec = (await env.store.get<PartyRecord>('party', res.planId))!;
+    expect(rec.plan.guests).toContain('ana'); // the others are still there
+    expect(rec.plan.guests).toContain('removed');
+    expect(JSON.parse(JSON.stringify((await env.store.get('meta', 'lastMet'))))).toEqual({ 'ana|ben': 6 });
+  });
+});
+
 describe('forgetting', () => {
   it('removes a person, their calendar link and their place in every circle', async () => {
     const env = setup();

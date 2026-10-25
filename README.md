@@ -7,7 +7,7 @@ It spots the birthday, finds the evening everyone is free, hands out the jobs, a
 
 [![CI](https://github.com/myselfsiddharth/rally/actions/workflows/ci.yml/badge.svg)](https://github.com/myselfsiddharth/rally/actions/workflows/ci.yml)
 ![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6)
-![192 tests](https://img.shields.io/badge/tests-193-brightgreen)
+![192 tests](https://img.shields.io/badge/tests-200-brightgreen)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
 Built at DevHacks 2026 for the Cubbie Hackathon, Track 2: agents for different students that coordinate toward a shared outcome.
@@ -113,7 +113,7 @@ The three safety checks are computed from the raw message log by code that is in
 
 ```bash
 npm install
-npm test                 # 193 tests: engine, privacy and cap properties, simulation invariants, adapters
+npm test                 # 200 tests: engine, privacy and cap properties, simulation invariants, adapters
 npm run typecheck
 npm run sim -- --seed 7 --students 30 --weeks 8
 npm run gen:sim          # regenerate the five bundled replay runs
@@ -128,6 +128,10 @@ Requires Node 22 or newer.
 - **Time:** daylight-saving days in New York, midnight-spanning blocks, unsorted and overlapping calendars.
 - **Simulation:** the same seed gives the same month message for message; on ten seeds, no circle ever has two parties within 14 days, no one is double booked or over their invite caps, surprise secrets hold, and every message is valid.
 - **Adapters:** Discord signature verification, the interaction handler, Google Calendar and OAuth requests, the Supabase store and the HTTP routes, against fake network calls. Quiet hours, idempotent ticks, double opt-in and the host's yes are tested end to end with fakes.
+
+## Privacy
+
+The plain-language policy is at `/privacy` on the site. Rally reads only busy and free times from a calendar, never titles or details, and `/rally forget` removes a person everywhere.
 
 ## Honest status
 

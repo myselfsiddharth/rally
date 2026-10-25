@@ -121,13 +121,39 @@ export class Orchestrator {
     if (rec) await this.d.store.put('person', id, { ...rec, paused });
   }
 
-  /** Delete everything Rally keeps about someone, including their calendar connection. */
+  /**
+   * Delete everything Rally keeps about someone: their record, calendar connection, circle membership, held and failed
+   * messages, coffee plans, demo events and invite history. Parties other people are in stay, with this person's id
+   * replaced by "removed", so nobody else's plan breaks.
+   */
   async forget(id: PersonId): Promise<void> {
+    const quoted = JSON.stringify(id);
     for (const c of await this.d.store.list<CircleRecord>('circle')) {
       if (c.members.includes(id)) await this.d.store.put('circle', c.id, { ...c, members: c.members.filter((m) => m !== id) });
     }
-    await this.d.store.del('token', id);
-    await this.d.store.del('person', id);
+    for (const ns of ['token', 'person', 'demoevents', 'oauthstate']) await this.d.store.del(ns, id);
+    for (const ns of ['outbox', 'undelivered']) {
+      for (const item of await this.d.store.list<{ id: string; person: PersonId }>(ns)) if (item.person === id) await this.d.store.del(ns, item.id);
+    }
+    for (const pair of await this.d.store.list<PairRecord>('pair')) {
+      if (pair.plan.a === id || pair.plan.b === id) await this.d.store.del('pair', pair.plan.id);
+    }
+    for (const party of await this.d.store.list<PartyRecord>('party')) {
+      const json = JSON.stringify(party);
+      if (json.includes(quoted)) await this.d.store.put('party', party.plan.id, JSON.parse(json.split(quoted).join('"removed"')));
+    }
+    for (const offer of await this.d.store.list<OfferRecord>('offer')) {
+      const json = JSON.stringify(offer);
+      if (json.includes(quoted)) await this.d.store.put('offer', offer.key, JSON.parse(json.split(quoted).join('"removed"')));
+    }
+    const met = (await this.d.store.get<Record<string, Ms>>('meta', 'lastMet')) ?? {};
+    await this.d.store.put('meta', 'lastMet', Object.fromEntries(Object.entries(met).filter(([k]) => !k.split('|').includes(id))));
+    const gov = await this.d.store.get<GovernorSnapshot>('meta', 'governor');
+    if (gov) {
+      delete gov.invites[id];
+      gov.declines = Object.fromEntries(Object.entries(gov.declines).filter(([k]) => !k.split('|').includes(id)));
+      await this.d.store.put('meta', 'governor', gov);
+    }
   }
 
   async createCircle(channelId: string, owner: PersonId, name: string): Promise<CircleRecord> {
