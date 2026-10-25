@@ -14,7 +14,7 @@ Open *Who was free*: grey is busy, pink is the chosen time. Say: "The agents nev
 
 **1:20 The rules that keep it from being creepy (45 seconds).** Scroll to the housekeeping list: parties held back by the 14-day cap, birthdays folded into a party already planned. Switch to *One-on-ones*: open one and read the double opt-in line. "The second person is only asked after the first says yes, so nobody learns they were turned down."
 
-**2:05 Prove it (30 seconds).** The safety checks panel: caps broken 0, private details leaked 0, people double booked 0. Switch to Run 3, Run 5: same zeros. In the terminal: `npm run sim -- --seed 7`, then `npm test` (192 tests). "Those three checks are computed from the raw message log, separately from the planner."
+**2:05 Prove it (30 seconds).** The safety checks panel: caps broken 0, private details leaked 0, people double booked 0. Switch to Run 3, Run 5: same zeros. In the terminal: `npm run sim -- --seed 7`, then `npm test` (193 tests). "Those three checks are computed from the raw message log, separately from the planner."
 
 **2:35 The real thing (25 seconds).** Show Discord: `/rally plan occasion:hangout`, a friend's DM with *I'm in* and *Can't make it* buttons, `/rally prefs`. "Same engine, real calendars. The Discord and Google paths are tested against fakes; here is the deploy guide for connecting live accounts."
 

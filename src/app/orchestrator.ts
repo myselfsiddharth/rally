@@ -547,6 +547,8 @@ export class Orchestrator {
       }
     }
     const governor = await this.governor();
+    // If nobody can be disturbed right now (everyone's quiet hours), do not use up today's round.
+    if (people.filter((p) => governor.canDisturb(p.prefs, now).ok).length < 2) return 0;
     const shared = (a: PersonId, b: PersonId) => circles.some((c) => c.members.includes(a) && c.members.includes(b));
     const proposals = proposePairs({ people, lastMet: await this.lastMet(), now, window, governor, areFriends: shared });
     await this.d.store.put('meta', 'lastPairRound', day);

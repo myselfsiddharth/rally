@@ -257,6 +257,16 @@ describe('coffee for two', () => {
     for (const d of reasked) expect(new Set([ask.person]).has(d.person) && false).toBe(false);
   });
 
+  it('does not use up the day when it first runs during quiet hours', async () => {
+    const env = setup();
+    await friends(env);
+    env.clock.now = phx(10, 26, 7); // 07:00 local, still quiet
+    expect((await env.app.tick()).pairs).toBe(0);
+    env.clock.now = phx(10, 26, 12); // same local day, awake
+    expect((await env.app.tick()).pairs).toBeGreaterThan(0);
+    expect(env.platform.dms.some((d) => d.text.includes('grab a coffee'))).toBe(true);
+  });
+
   it('does not run in the middle of the night', async () => {
     const env = setup();
     await friends(env);

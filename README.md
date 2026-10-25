@@ -7,7 +7,7 @@ It spots the birthday, finds the evening everyone is free, hands out the jobs, a
 
 [![CI](https://github.com/myselfsiddharth/rally/actions/workflows/ci.yml/badge.svg)](https://github.com/myselfsiddharth/rally/actions/workflows/ci.yml)
 ![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6)
-![192 tests](https://img.shields.io/badge/tests-192-brightgreen)
+![192 tests](https://img.shields.io/badge/tests-193-brightgreen)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
 Built at DevHacks 2026 for the Cubbie Hackathon, Track 2: agents for different students that coordinate toward a shared outcome.
@@ -113,7 +113,7 @@ The three safety checks are computed from the raw message log by code that is in
 
 ```bash
 npm install
-npm test                 # 192 tests: engine, privacy and cap properties, simulation invariants, adapters
+npm test                 # 193 tests: engine, privacy and cap properties, simulation invariants, adapters
 npm run typecheck
 npm run sim -- --seed 7 --students 30 --weeks 8
 npm run gen:sim          # regenerate the five bundled replay runs
