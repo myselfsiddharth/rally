@@ -72,7 +72,7 @@ async function command(i: Interaction, actor: { id: string; name: string }, ctx:
     }
     case 'connect': {
       const url = await ctx.connectUrl(actor.id);
-      return reply(url ? `Connect your calendar here (only free and busy times are ever shared, never what the events are): ${url}` : 'Calendar connection is not set up yet.');
+      return reply(url ? `Connect your calendar here (only free and busy times are ever shared, never what the events are): ${url}` : 'Real calendars are not turned on for this server, so your agent is using a made-up demo calendar for you. Everything else works the same.');
     }
     case 'birthday': {
       const ok = await app.setBirthday(actor.id, Number(values.month), Number(values.day));

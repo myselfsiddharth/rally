@@ -6,8 +6,10 @@ const Env = z.object({
   DISCORD_BOT_TOKEN: z.string().min(1),
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  GOOGLE_CLIENT_ID: z.string().min(1),
-  GOOGLE_CLIENT_SECRET: z.string().min(1),
+  // Optional: without Google, everyone gets a clearly labelled made-up calendar so the bot can still be tried.
+  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+  CALENDAR_MODE: z.enum(['google', 'demo']).optional(),
   APP_URL: z.string().url(),
   CRON_SECRET: z.string().min(8),
   LLM_BASE_URL: z.string().url().optional(),

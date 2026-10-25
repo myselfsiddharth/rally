@@ -22,6 +22,7 @@ export async function GET(request: Request): Promise<Response> {
   } catch {
     return page('Not set up yet', 'Rally is not configured on this server.', 500);
   }
+  if (!rt.oauth) return page('Not set up yet', 'Calendar connection is not turned on for this server. Rally is using demo calendars.', 404);
   if (!(await rt.verifyState(person, state.slice(dot + 1)))) return page('Something went wrong', 'That sign-in link expired. Run /rally connect again.', 400);
   try {
     await rt.oauth.exchange(person, code);

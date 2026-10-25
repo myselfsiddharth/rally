@@ -1,4 +1,5 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { DemoCalendar } from '../adapters/calendar/demo';
 import { GoogleCalendar } from '../adapters/calendar/google';
 import { GoogleOAuth } from '../adapters/calendar/oauth';
 import { DiscordPlatform } from '../adapters/platform/discord';
@@ -11,7 +12,8 @@ import type { InteractionContext } from './interactions';
 export interface Runtime {
   env: AppEnv;
   app: Orchestrator;
-  oauth: GoogleOAuth;
+  /** Undefined when Google is not configured (the demo calendar is used instead). */
+  oauth: GoogleOAuth | undefined;
   ctx: InteractionContext;
   verifyState(person: string, state: string): Promise<boolean>;
 }
@@ -20,8 +22,11 @@ export interface Runtime {
 export function buildRuntime(source: Record<string, string | undefined> = process.env): Runtime {
   const env = readEnv(source);
   const store = new SupabaseStore(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
-  const oauth = new GoogleOAuth({ clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET, redirectUri: `${env.APP_URL.replace(/\/$/, '')}/api/google/callback` }, store);
-  const calendar = new GoogleCalendar({ accessToken: (p) => oauth.accessToken(p) });
+  const useGoogle = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) && env.CALENDAR_MODE !== 'demo';
+  const oauth = useGoogle
+    ? new GoogleOAuth({ clientId: env.GOOGLE_CLIENT_ID!, clientSecret: env.GOOGLE_CLIENT_SECRET!, redirectUri: `${env.APP_URL.replace(/\/$/, '')}/api/google/callback` }, store)
+    : undefined;
+  const calendar = oauth ? new GoogleCalendar({ accessToken: (p) => oauth.accessToken(p) }) : new DemoCalendar(store);
   const platform = new DiscordPlatform({
     botToken: env.DISCORD_BOT_TOKEN,
     channelOf: async (circle) => (await store.get<CircleRecord>('circle', circle))?.channelId,
@@ -32,6 +37,7 @@ export function buildRuntime(source: Record<string, string | undefined> = proces
     app,
     now: Date.now,
     connectUrl: async (person) => {
+      if (!oauth) return undefined;
       const secret = randomBytes(16).toString('hex');
       await store.put('oauthstate', person, secret);
       return oauth.authUrl(person, secret);

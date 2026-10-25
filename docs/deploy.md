@@ -19,7 +19,9 @@ Copy `.env.example` to `.env.local` and fill it in as you go.
 5. Later, after Vercel is set up, set **Interactions Endpoint URL** to `https://YOUR-APP.vercel.app/api/discord`. Discord sends a signed ping to verify it.
 6. Register the command: `npm run register-commands`.
 
-## 3. Google Calendar
+## 3. Google Calendar (optional)
+
+Skip this to start: with no Google credentials, or `CALENDAR_MODE=demo`, every student gets a made-up demo calendar and `/rally status` says so. Add Google when you want real calendars.
 
 1. console.cloud.google.com: create a project and enable the **Google Calendar API**.
 2. OAuth consent screen: External, add yourself and friends as **test users** (a test-mode app can have up to 100 without Google's review).

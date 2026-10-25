@@ -250,3 +250,43 @@ describe('interaction handler', () => {
     expect(text(await handleInteraction(cmd('u9', 'plan', { occasion: 'hangout' }, 'elsewhere'), ctx))).toContain('join a circle');
   });
 });
+
+import { DemoCalendar } from '../../src/adapters/calendar/demo';
+import { readEnv } from '../../src/lib/env';
+import { DAY, HOUR as H, intersect } from '../../src/engine/time';
+
+describe('DemoCalendar', () => {
+  const window = { start: Date.UTC(2026, 9, 26, 7), end: Date.UTC(2026, 9, 26, 7) + 7 * DAY };
+  it('gives each person the same believable week every time, and different people different weeks', async () => {
+    const cal = new DemoCalendar(new MemoryStore());
+    const a1 = await cal.busy('alice', window);
+    expect(await cal.busy('alice', window)).toEqual(a1);
+    expect(a1.length).toBeGreaterThan(5);
+    expect(await cal.busy('bob', window)).not.toEqual(a1);
+    // looking at a later window gives exactly the overlapping part of what the earlier window showed
+    const later = { start: window.start + 2 * DAY, end: window.end };
+    expect(await cal.busy('alice', later)).toEqual(intersect(a1, [later]));
+  });
+  it('remembers events the agents add, through the store, and says it is a demo', async () => {
+    const store = new MemoryStore();
+    const cal = new DemoCalendar(store);
+    const slot = { start: window.start + 5 * H, end: window.start + 6 * H };
+    await cal.insertEvent('alice', { title: 'Coffee with Bob', interval: slot });
+    expect((await new DemoCalendar(store).busy('alice', window)).some((i) => i.start <= slot.start && i.end >= slot.end)).toBe(true);
+    expect(cal.isDemo).toBe(true);
+    expect(await cal.connected()).toBe(true);
+  });
+});
+
+describe('environment without Google', () => {
+  const base = {
+    DISCORD_APP_ID: '1', DISCORD_PUBLIC_KEY: 'a'.repeat(64), DISCORD_BOT_TOKEN: 't', SUPABASE_URL: 'https://x.supabase.co',
+    SUPABASE_SERVICE_ROLE_KEY: 'k', APP_URL: 'https://rally.example', CRON_SECRET: '12345678',
+  };
+  it('is valid: Google is optional and the demo calendar takes over', () => {
+    expect(readEnv(base).GOOGLE_CLIENT_ID).toBeUndefined();
+  });
+  it('still rejects a bad calendar mode', () => {
+    expect(() => readEnv({ ...base, CALENDAR_MODE: 'nope' })).toThrow('CALENDAR_MODE');
+  });
+});

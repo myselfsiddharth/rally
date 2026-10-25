@@ -131,7 +131,8 @@ Requires Node 22 or newer.
 
 ## Honest status
 
-- **Tested against fakes, not live:** the Discord bot, Google Calendar and Supabase paths are covered by tests with recorded request and response shapes. They have **not** been run against the live services in this repository's history, because that needs the team's own Discord, Google and Supabase accounts. [docs/deploy.md](docs/deploy.md) lists the exact steps.
+- **Live-tested:** the Supabase store, against a real database (upsert, list, delete, and a rejected request without a valid key). **Tested against fakes only:** Discord (signature checks, commands and buttons) and Google Calendar and OAuth, which are covered by tests that check the exact requests and responses. [docs/deploy.md](docs/deploy.md) lists the steps for connecting them.
+- **Demo calendars:** without Google credentials, or with `CALENDAR_MODE=demo`, every Discord user gets a made-up but believable weekly calendar (the same one every time), so the bot can be tried end to end. `/rally status` says plainly when a calendar is a demo.
 - **The simulation is not evidence about real students.** It shows the system behaves correctly under many random situations; it says nothing about whether real friends would use it.
 - The hard-line filter is a regex floor for model-written text. The agents' own wording is fixed templates, which need no filter.
 - Birthdays are entered by students (`/rally birthday`); there is no contact or social-media import.
