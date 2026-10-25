@@ -4,6 +4,8 @@ import { HOUR, DAY, isValidTimezone, localToInstant } from '../engine/time';
 import { actorOf, InteractionSchema, type DiscordOption, type Interaction } from '../adapters/platform/discord';
 import type { Orchestrator } from './orchestrator';
 import { WELCOME_HINT, helpText } from './guide';
+import { ALL_FESTIVALS, festivalName } from '../engine/festivals';
+import type { CircleMode } from './orchestrator';
 import type { Occasion } from '../engine/tasks';
 import type { Budget } from '../engine/types';
 
@@ -102,6 +104,30 @@ async function runCommand(sub: string | undefined, values: Record<string, string
     case 'birthday': {
       const ok = await app.setBirthday(actor.id, Number(values.month), Number(values.day));
       return reply(ok ? 'Got it. Your friends\' agents will offer to plan something a couple of weeks before.' : 'That does not look like a date.');
+    }
+    case 'auto': {
+      const mode = String(values.mode) as CircleMode;
+      if (!['auto', 'ask', 'off'].includes(mode)) return reply('Pick automatic, ask first, or only when asked.');
+      const circles = await app.circlesOf(actor.id);
+      const circle = circles.find((c) => c.channelId === i.channel_id) ?? (circles.length === 1 ? circles[0] : undefined);
+      if (!circle) return reply('Run this in your circle\'s channel, or join a circle first.');
+      await app.setCircleMode(circle.id, mode, actor.id);
+      return reply(
+        mode === 'auto'
+          ? `${circle.name} now plans by itself. Rally will notice birthdays and festivals, pick a host, and tell the channel. Everyone still confirms for themselves, and the host can stop a plan with one tap.`
+          : mode === 'ask'
+            ? `${circle.name} will ask a likely host before planning anything. That is the default.`
+            : `${circle.name} will only plan when someone runs /rally plan.`,
+      );
+    }
+    case 'festival': {
+      const id = String(values.name);
+      if (!ALL_FESTIVALS.includes(id)) return reply('I do not know that festival.');
+      const circles = await app.circlesOf(actor.id);
+      const circle = circles.find((c) => c.channelId === i.channel_id) ?? (circles.length === 1 ? circles[0] : undefined);
+      if (!circle) return reply('Run this in your circle\'s channel, or join a circle first.');
+      const updated = await app.setFestival(circle.id, id, Boolean(values.on), actor.id);
+      return reply(updated ? `${festivalName(id)} is ${values.on ? 'on' : 'off'} for ${circle.name}.` : 'I could not change that.');
     }
     case 'demo': {
       const circles = await app.circlesOf(actor.id);

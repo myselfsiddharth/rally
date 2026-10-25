@@ -24,6 +24,14 @@ export class FakeCalendar implements CalendarPort {
     this.calendars[person]!.events.push({ interval: event.interval, label: event.title });
     return { id: `fake-${this.inserted.length}` };
   }
+  /** Birthdays each person's Google Birthdays calendar would show, for tests. */
+  birthdayFeeds: Record<PersonId, { name: string; month: number; day: number }[]> = {};
+  async birthdays(person: PersonId): Promise<{ name: string; month: number; day: number }[]> {
+    return this.birthdayFeeds[person] ?? [];
+  }
+  async kind(person: PersonId): Promise<'connected' | 'none'> {
+    return (await this.connected(person)) ? 'connected' : 'none';
+  }
   deleted: { person: PersonId; id: string }[] = [];
   async deleteEvent(person: PersonId, id: string): Promise<void> {
     const n = Number(id.replace('fake-', ''));

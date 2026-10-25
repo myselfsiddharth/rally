@@ -33,6 +33,14 @@ export default function Privacy() {
           <h2>What Rally reads from your calendar</h2>
           <div>
             <p>Rally asks Google for two things only: when you are <b>busy or free</b>, and permission to <b>add an event</b> after you say yes. It does not read event titles, descriptions, locations or guest lists, and it does not store your busy times. It checks them when a plan needs them and keeps only the result for that plan.</p>
+            <p>If you connected Google, Rally also looks once a day at your <b>Birthdays</b> calendar, the one Google builds from your contacts, to learn when friends in your circle have birthdays. From each entry it takes only a first name and a day. It does not read notes, emails, phone numbers or surnames, and it only keeps a birthday for someone who is in your circle and whose first name matches exactly one member. If two members share a name, it skips the entry. Birthdays you set yourself are never overwritten.</p>
+          </div>
+        </section>
+
+        <section className="legal-row">
+          <h2>Automatic planning</h2>
+          <div>
+            <p>Each circle has a setting. By default Rally <b>asks a likely host</b> before it plans anything. A circle can switch to <b>automatic</b>, where Rally starts the plan and tells the channel, or <b>off</b>. Even in automatic mode the host gets a one-tap stop button, nobody&apos;s calendar changes without their own yes, and the 14-day limit between parties still applies. Festivals such as Halloween and Thanksgiving are on by default; Diwali, Lunar New Year and Eid are only planned if your circle turns them on.</p>
           </div>
         </section>
 

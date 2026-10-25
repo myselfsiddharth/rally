@@ -18,6 +18,8 @@ export interface CalendarPort {
   insertEvent(person: PersonId, event: { title: string; interval: Interval; description?: string }): Promise<{ id: string }>;
   /** Remove an event this app added (for example when someone backs out). Missing events are not an error. */
   deleteEvent(person: PersonId, id: string): Promise<void>;
+  /** Optional: birthdays shown on this person's Google Birthdays calendar in a window (a name and a day, nothing else). */
+  birthdays?(person: PersonId, window: Interval): Promise<{ name: string; month: number; day: number }[]>;
   /** Optional: whether this person's calendar is real or a made-up demo one. Used only to be honest in /rally status. */
   kind?(person: PersonId): Promise<'connected' | 'demo' | 'none'>;
 }

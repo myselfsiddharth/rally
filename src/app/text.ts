@@ -26,6 +26,14 @@ export const say = {
     `${name} can't come to ${title} anymore.${handed.map((h) => (h.to ? ` ${h.label} went to ${h.to}.` : ` Nobody can take "${h.label}" yet, so I will ask you.`)).join('')}`,
   withdrewPair: (name: string) => `${name} can't make your coffee anymore, so I took it off your calendar.`,
   withdrawAck: () => `Okay, you are out. I told them and took it off your calendar.`,
+  autoStarted: (title: string) => `Rally is planning ${title} for this circle. Everyone will get a message to confirm a time and take a job. Not wanted? Turn this off with /rally auto.`,
+  autoHost: (title: string) => `I noticed ${title} is coming up and started planning it with you as host, since your circle is on automatic. You do not have to do anything yet: I will message everyone and bring you only the decisions. Want me to stop?`,
+  modeChanged: (who: string, mode: 'ask' | 'auto' | 'off') =>
+    mode === 'auto'
+      ? `${who} turned on automatic planning. Rally will plan birthdays and festivals by itself, pick a host, and tell this channel. Everyone still confirms for themselves.`
+      : mode === 'ask'
+        ? `${who} set Rally to ask a host first when something is coming up.`
+        : `${who} turned off Rally's own planning. It will only plan when someone runs /rally plan.`,
   needCalendar: (title: string) => `I could not see your calendar for ${title}, so I counted you out. Connect it with /rally connect and I can include you next time.`,
 };
 

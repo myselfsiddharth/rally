@@ -1,4 +1,6 @@
 /** The `/rally` slash command, as Discord wants it registered. */
+import { ALL_FESTIVALS, DEFAULT_FESTIVALS, festivalName } from '../../engine/festivals';
+
 const STRING = 3;
 const INTEGER = 4;
 const BOOLEAN = 5;
@@ -73,6 +75,23 @@ export const RALLY_COMMAND = {
       ],
     }),
     opt(SUB, 'skip', 'Never set me up with this person', { options: [opt(USER, 'person', 'Who', { required: true })] }),
+    opt(SUB, 'auto', 'Choose whether Rally plans by itself, asks a host first, or only plans when asked', {
+      options: [
+        opt(STRING, 'mode', 'How this circle plans', {
+          required: true,
+          choices: [{ name: 'Plan automatically and tell everyone', value: 'auto' }, { name: 'Ask a host first (default)', value: 'ask' }, { name: 'Only when someone runs /rally plan', value: 'off' }],
+        }),
+      ],
+    }),
+    opt(SUB, 'festival', 'Turn a festival on or off for this circle', {
+      options: [
+        opt(STRING, 'name', 'Which festival', {
+          required: true,
+          choices: ALL_FESTIVALS.map((id) => ({ name: `${festivalName(id)}${DEFAULT_FESTIVALS.includes(id) ? '' : ' (off by default)'}`, value: id })),
+        }),
+        opt(BOOLEAN, 'on', 'True to plan it, false to skip it', { required: true }),
+      ],
+    }),
     opt(SUB, 'demo', 'Add three fictional friends so you can watch a whole plan by yourself'),
     opt(SUB, 'status', 'See what your agent is doing'),
     opt(SUB, 'pause', 'Pause or resume your agent', { options: [opt(BOOLEAN, 'on', 'True to pause', { required: true })] }),

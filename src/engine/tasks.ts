@@ -1,6 +1,6 @@
 import type { Budget, PersonId, Prefs } from './types';
 
-export type Occasion = 'birthday' | 'halloween' | 'concert' | 'hangout';
+export type Occasion = 'birthday' | 'halloween' | 'concert' | 'hangout' | 'festival';
 
 export interface TaskSpec {
   id: string;
@@ -48,6 +48,13 @@ export function templateFor(occasion: Occasion): TaskSpec[] {
         { id: 'snacks', label: 'Bring snacks', critical: false, weight: 2, needs: {} },
         { id: 'music', label: 'Sort the music and a speaker', critical: false, weight: 2, needs: {} },
         { id: 'theme', label: 'Pick the costume theme', critical: false, weight: 1, needs: {} },
+      ];
+    case 'festival':
+      return [
+        { id: 'venue', label: 'Host at their place', critical: true, weight: 3, needs: { host: true } },
+        { id: 'food', label: 'Bring a dish or snacks', critical: false, weight: 3, needs: {} },
+        { id: 'music', label: 'Sort the music and a speaker', critical: false, weight: 2, needs: {} },
+        { id: 'decorations', label: 'Bring decorations', critical: false, weight: 1, needs: {} },
       ];
     case 'concert':
       return [

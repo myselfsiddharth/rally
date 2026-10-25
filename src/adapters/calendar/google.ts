@@ -7,6 +7,7 @@ const API = 'https://www.googleapis.com/calendar/v3';
 const FreeBusyResponse = z.object({
   calendars: z.record(z.string(), z.object({ busy: z.array(z.object({ start: z.string(), end: z.string() })) })),
 });
+const BirthdayList = z.object({ items: z.array(z.object({ summary: z.string().optional(), start: z.object({ date: z.string().optional() }).optional() })).optional() });
 const InsertResponse = z.object({ id: z.string() });
 
 export interface GoogleDeps {
@@ -48,6 +49,27 @@ export class GoogleCalendar implements CalendarPort {
     if (!parsed.success) throw new CalendarError('Google free/busy returned an unexpected response');
     const busy = parsed.data.calendars.primary?.busy ?? [];
     return busy.map((b) => ({ start: Date.parse(b.start), end: Date.parse(b.end) })).filter((i) => Number.isFinite(i.start) && Number.isFinite(i.end));
+  }
+
+  /**
+   * Birthdays Google shows from the person's contacts. Only a name and a day are kept; every other field is ignored.
+   * A missing or unreadable Birthdays calendar is not an error, it just means nothing to learn.
+   */
+  async birthdays(person: PersonId, window: Interval): Promise<{ name: string; month: number; day: number }[]> {
+    const token = await this.token(person);
+    const q = new URLSearchParams({ timeMin: new Date(window.start).toISOString(), timeMax: new Date(window.end).toISOString(), singleEvents: 'true', maxResults: '100' });
+    const res = await this.fetchFn(`${API}/calendars/${encodeURIComponent('addressbook#contacts@group.v.calendar.google.com')}/events?${q}`, { headers: { authorization: `Bearer ${token}` } });
+    if (res.status === 403 || res.status === 404) return [];
+    if (!res.ok) throw new CalendarError(`Google birthdays failed with status ${res.status}`, res.status);
+    const parsed = BirthdayList.safeParse(await res.json());
+    if (!parsed.success) return [];
+    const out: { name: string; month: number; day: number }[] = [];
+    for (const item of parsed.data.items ?? []) {
+      const name = /^(.+?)(?:['\u2019]s|['\u2019]) birthday$/i.exec(item.summary?.trim() ?? '')?.[1]?.trim();
+      const date = /^\d{4}-(\d{2})-(\d{2})$/.exec(item.start?.date ?? '');
+      if (name && date) out.push({ name, month: Number(date[1]), day: Number(date[2]) });
+    }
+    return out;
   }
 
   async deleteEvent(person: PersonId, id: string): Promise<void> {

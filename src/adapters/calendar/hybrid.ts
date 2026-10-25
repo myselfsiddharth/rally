@@ -30,6 +30,10 @@ export class HybridCalendar implements CalendarPort {
     const made = await (real ? this.google : this.demo).insertEvent(person, event);
     return { id: `${real ? 'g' : 'd'}:${made.id}` }; // remember which calendar holds it
   }
+  /** Only real calendars have birthdays to learn from. */
+  async birthdays(person: PersonId, window: Interval): Promise<{ name: string; month: number; day: number }[]> {
+    return (await this.google.connected(person)) && this.google.birthdays ? this.google.birthdays(person, window) : [];
+  }
   async deleteEvent(person: PersonId, id: string): Promise<void> {
     const [which, ...rest] = id.split(':');
     await (which === 'g' ? this.google : this.demo).deleteEvent(person, rest.join(':'));

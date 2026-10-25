@@ -88,7 +88,7 @@ export function newParty(p: { id: string; circle: CircleId; occasion: Occasion; 
 }
 
 const TERMINAL: PartyStatus[] = ['committed', 'cancelled', 'no_slot'];
-const FOOD = new Set(['cake', 'drinks', 'snacks']);
+const FOOD = new Set(['cake', 'drinks', 'snacks', 'food']);
 
 /** The state machine for one party. Pure apart from the shared governor; duplicate event ids change nothing. */
 export function reduceParty(plan: PartyPlan, ev: PartyEvent, ctx: PartyContext): PartyStep {

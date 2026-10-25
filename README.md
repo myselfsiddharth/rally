@@ -36,6 +36,8 @@ College friendships die of logistics, not dislike. Everyone is busy, nobody know
 
 **Pair mode.** The agents keep noticing two friends who both have an open evening hour and have not met lately, and offer a coffee. **Double opt-in:** the second person is only asked after the first says yes, so nobody ever learns they were turned down. Two yeses put it on both calendars.
 
+**It plans on its own.** Rally learns friends' birthdays from each connected Google *Birthdays* calendar (first name and day only), knows the major festivals (Halloween, Thanksgiving, New Year's Eve, St. Patrick's Day, Galentine's Day, and Diwali, Lunar New Year and Eid if a circle turns them on), and spots them two weeks ahead. Each circle chooses a mode with `/rally auto`: *ask* a likely host first (default), *auto* (start the plan, tell the channel, host gets a Stop button), or *off*. `/rally festival` switches individual festivals on or off.
+
 **The student stays in charge.** Agents propose; students decide. Nothing goes on a calendar, and no job is anyone's, until they say yes.
 
 **Real life gets in the way, and the plan copes.**
@@ -157,7 +159,9 @@ The plain-language policy is at `/privacy` on the site. Rally reads only busy an
 - **Demo calendars:** without Google credentials, or with `CALENDAR_MODE=demo`, every Discord user gets a made-up but believable weekly calendar (the same one every time), so the bot can be tried end to end. `/rally status` says plainly when a calendar is a demo.
 - **The simulation is not evidence about real students.** It shows the system behaves correctly under many random situations; it says nothing about whether real friends would use it.
 - The hard-line filter is a regex floor for model-written text. The agents' own wording is fixed templates, which need no filter.
-- Birthdays are entered by students (`/rally birthday`); there is no contact or social-media import.
+- Birthdays come from students (`/rally birthday`) or, for connected Google users, the Birthdays calendar. The Google path is covered by tests against recorded-shape responses only; it has not been run against a real contacts calendar. Matching is by exact first name and skips ambiguous names.
+- Festival dates are computed by rule. Lunar New Year uses a published table (2026-2035); Eid and Diwali are approximate and can be a day off, so they are off by default.
+- In auto mode the host does not give a prior yes; they get a Stop button and every attendee still confirms for themselves.
 
 ## Repository layout
 

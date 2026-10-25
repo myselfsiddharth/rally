@@ -7,7 +7,8 @@ import { proposePairs, sortedPairKey } from '../engine/pairs';
 import { newParty, reduceParty, type PartyEvent, type PartyPlan } from '../engine/party';
 import type { Message } from '../engine/protocol';
 import type { Ledger, Occasion } from '../engine/tasks';
-import { DAY, HOUR, freeFrom, localParts, startOfLocalDay } from '../engine/time';
+import { DEFAULT_FESTIVALS, festivalName, upcomingFestivals } from '../engine/festivals';
+import { DAY, HOUR, freeFrom, localParts, localToInstant, startOfLocalDay } from '../engine/time';
 import { DEFAULT_PREFS, type CircleId, type Interval, type Ms, type PersonId, type Prefs } from '../engine/types';
 import { REASONS, say } from './text';
 
@@ -16,11 +17,19 @@ export interface PersonRecord {
   name: string;
   prefs: Prefs;
   birthday?: { month: number; day: number };
+  /** Who told us: the person themselves (always wins), or a friend's Google Birthdays calendar. */
+  birthdaySource?: 'self' | 'google';
   paused: boolean;
 }
 
+export type CircleMode = 'ask' | 'auto' | 'off';
+
 export interface CircleRecord {
   id: CircleId;
+  /** ask (default): offer plans to a likely host. auto: plan by itself. off: only when asked. */
+  mode?: CircleMode;
+  /** Festival ids this circle wants planned. Defaults to the secular set. */
+  festivals?: string[];
   name: string;
   channelId: string;
   code: string;
@@ -60,6 +69,8 @@ export interface OfferRecord {
   index: number;
   state: 'asking' | 'waiting' | 'started' | 'dropped';
   host?: PersonId;
+  /** The agent chose the host and started it without asking first (automatic mode). */
+  auto?: boolean;
 }
 
 export interface OutboxItem {
@@ -96,7 +107,10 @@ const RSVP_TIMEOUT = 24 * HOUR;
 const JOB_TIMEOUT = 24 * HOUR;
 const PAIR_TIMEOUT = 12 * HOUR;
 
-const OCCASION_LENGTH: Record<Occasion, Ms> = { birthday: 3 * HOUR, halloween: 4 * HOUR, concert: 4 * HOUR, hangout: 2 * HOUR };
+const OCCASION_LENGTH: Record<Occasion, Ms> = { birthday: 3 * HOUR, halloween: 4 * HOUR, concert: 4 * HOUR, hangout: 2 * HOUR, festival: 4 * HOUR };
+
+/** A first name for matching a contact to a circle member: lowercase, no accents, no "(demo)". */
+const firstName = (name: string | undefined): string => (name ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\(.*?\)/g, '').trim().split(/\s+/)[0] ?? '';
 
 /** Connects the planning engine to calendars, chat and storage. Every state change goes through the engine's reducers. */
 export class Orchestrator {
@@ -127,7 +141,7 @@ export class Orchestrator {
   async setBirthday(id: PersonId, month: number, day: number): Promise<boolean> {
     const rec = await this.person(id);
     if (!rec || month < 1 || month > 12 || day < 1 || day > 31) return false;
-    await this.d.store.put('person', id, { ...rec, birthday: { month, day } });
+    await this.d.store.put('person', id, { ...rec, birthday: { month, day }, birthdaySource: 'self' });
     return true;
   }
 
@@ -171,6 +185,35 @@ export class Orchestrator {
     }
   }
 
+  /** Anyone in the circle can change how it plans. The channel is told, so it is never a secret. */
+  async setCircleMode(circleId: CircleId, mode: CircleMode, by: PersonId): Promise<CircleRecord | undefined> {
+    const circle = await this.d.store.get<CircleRecord>('circle', circleId);
+    if (!circle || !circle.members.includes(by)) return undefined;
+    circle.mode = mode;
+    await this.d.store.put('circle', circle.id, circle);
+    await this.postSafe(circle.id, say.modeChanged(await this.nameOf(by), mode));
+    return circle;
+  }
+
+  async setFestival(circleId: CircleId, festivalId: string, on: boolean, by: PersonId): Promise<CircleRecord | undefined> {
+    const circle = await this.d.store.get<CircleRecord>('circle', circleId);
+    if (!circle || !circle.members.includes(by) || !festivalName(festivalId)) return undefined;
+    const set = new Set(circle.festivals ?? DEFAULT_FESTIVALS);
+    if (on) set.add(festivalId);
+    else set.delete(festivalId);
+    circle.festivals = [...set];
+    await this.d.store.put('circle', circle.id, circle);
+    return circle;
+  }
+
+  private async postSafe(circle: CircleId, text: string): Promise<void> {
+    try {
+      await this.d.platform.post(circle, text);
+    } catch {
+      /* the channel may be gone or the bot muted; nothing else depends on it */
+    }
+  }
+
   async createCircle(channelId: string, owner: PersonId, name: string): Promise<CircleRecord> {
     const n = await this.counter('circle');
     const code = Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -197,6 +240,11 @@ export class Orchestrator {
     const parties = (await this.d.store.list<PartyRecord>('party')).filter((p) => p.plan.guests.includes(person) && !['cancelled', 'no_slot'].includes(p.plan.status));
     const kind = this.d.calendar.kind ? await this.d.calendar.kind(person) : (await this.d.calendar.connected(person)) ? 'connected' : 'none';
     const lines = [`Calendar: ${kind === 'demo' ? 'demo (a made-up calendar, not yours; use /rally connect for your real one)' : kind === 'connected' ? 'connected (only your busy and free times are used)' : 'not connected (use /rally connect)'}`, `Quiet hours: ${rec.prefs.quietStartHour}:00 to ${rec.prefs.quietEndHour}:00`, `Coffee invites: at most ${rec.prefs.maxPairInvitesPerWeek} a week`];
+    for (const c of await this.circlesOf(person)) {
+      const mode = c.mode === 'auto' ? 'plans automatically' : c.mode === 'off' ? 'plans only when asked' : 'asks a host first';
+      const on = (c.festivals ?? DEFAULT_FESTIVALS).map((id) => festivalName(id)).filter(Boolean);
+      lines.push(`${c.name}: ${mode}. Festivals: ${on.join(', ') || 'none'}.`);
+    }
     for (const p of parties.slice(-4)) lines.push(`${p.title}: ${p.plan.status.replace('_', ' ')}`);
     return lines.join('\n');
   }
@@ -569,24 +617,85 @@ export class Orchestrator {
     ]);
   }
 
-  /** Look for occasions that need a plan and ask a likely host. Safe to run repeatedly. */
+  /**
+   * Learn friends' birthdays from the Google Birthdays calendar of anyone who connected one, once a day. A birthday is
+   * matched to a circle member only by an unambiguous first name, and a birthday the person gave themselves always wins.
+   */
+  private async discoverBirthdays(now: Ms): Promise<number> {
+    if (!this.d.calendar.birthdays) return 0;
+    const circles = await this.d.store.list<CircleRecord>('circle');
+    const people = new Map((await this.d.store.list<PersonRecord>('person')).map((p) => [p.id, p]));
+    const today = localParts(now, DEFAULT_PREFS.tz).dateKey;
+    let learned = 0;
+    for (const scanner of new Set(circles.flatMap((c) => c.members))) {
+      const rec = people.get(scanner);
+      if (!rec || rec.paused || isDemoPerson(scanner)) continue;
+      if ((await this.d.store.get<string>('bdayscan', scanner)) === today) continue;
+      if (this.d.calendar.kind ? (await this.d.calendar.kind(scanner)) !== 'connected' : !(await this.d.calendar.connected(scanner))) continue;
+      await this.d.store.put('bdayscan', scanner, today);
+      let seen: { name: string; month: number; day: number }[];
+      try {
+        seen = await this.d.calendar.birthdays(scanner, { start: now, end: now + 30 * DAY });
+      } catch {
+        continue; // a calendar hiccup today is not worth a retry storm; tomorrow is another scan
+      }
+      const friends = [...new Set(circles.filter((c) => c.members.includes(scanner)).flatMap((c) => c.members))].filter((m) => m !== scanner && !isDemoPerson(m) && people.has(m));
+      for (const b of seen) {
+        const matches = friends.filter((m) => firstName(people.get(m)!.name) === firstName(b.name));
+        if (matches.length !== 1) continue; // nobody, or two friends with the same first name: do not guess
+        const target = people.get(matches[0]!)!;
+        if (target.birthdaySource === 'self' || (target.birthday?.month === b.month && target.birthday?.day === b.day)) continue;
+        const next = { ...target, birthday: { month: b.month, day: b.day }, birthdaySource: 'google' as const };
+        people.set(target.id, next);
+        await this.d.store.put('person', target.id, next);
+        learned++;
+      }
+    }
+    return learned;
+  }
+
+  /** In automatic mode: pick the host, start the plan, and tell the channel and the host. */
+  private async autoStart(offer: OfferRecord): Promise<void> {
+    offer.host = offer.candidates[0]!;
+    offer.auto = true;
+    const result = await this.startParty({ circle: offer.circle, host: offer.host, occasion: offer.occasion, honoree: offer.honoree, surprise: false, title: offer.title, window: offer.window, durationMs: offer.durationMs, key: offer.key });
+    if (result.ok) {
+      offer.state = 'started';
+      await this.d.store.put('offer', offer.key, offer);
+      await this.announceAuto(offer);
+    } else if (result.reason === 'party_cap') {
+      offer.state = 'waiting'; // started for them as soon as the 14-day gap is over
+      await this.d.store.put('offer', offer.key, offer);
+      await this.send(offer.host, say.hostWaiting(offer.title, formatDay(result.nextAt!, await this.tzOf(offer.host))));
+    } else {
+      offer.state = 'dropped';
+      await this.d.store.put('offer', offer.key, offer);
+    }
+  }
+
+  private async announceAuto(offer: OfferRecord): Promise<void> {
+    await this.postSafe(offer.circle, say.autoStarted(offer.title));
+    await this.send(offer.host!, say.autoHost(offer.title), [{ id: `party:${offer.key}:cancel`, label: 'Stop it', style: 'danger' }]);
+  }
+
+  /**
+   * Look for occasions that need a plan: typed or learned birthdays, and the festivals a circle has turned on. What
+   * happens next depends on the circle: ask a likely host (default), plan by itself, or leave it alone. Safe to repeat.
+   */
   private async findOccasions(now: Ms): Promise<number> {
     let created = 0;
     const circles = await this.d.store.list<CircleRecord>('circle');
     const people = new Map((await this.d.store.list<PersonRecord>('person')).map((p) => [p.id, p]));
-    const ask = async (offer: OfferRecord) => {
-      if (await this.d.store.get('offer', offer.key)) return;
-      await this.d.store.put('offer', offer.key, offer);
-      created++;
-      await this.askHost(offer);
-    };
     const candidatesFor = (circle: CircleRecord, honoree: PersonId | null) =>
       circle.members
         .filter((m) => m !== honoree && people.get(m) && !people.get(m)!.paused)
         .sort((a, b) => Number(people.get(b)!.prefs.canHost) - Number(people.get(a)!.prefs.canHost) || (a < b ? -1 : 1));
 
     for (const circle of circles) {
-      if (circle.members.length < 3) continue;
+      const mode = circle.mode ?? 'ask';
+      if (mode === 'off' || circle.members.length < 3) continue;
+      const found: Omit<OfferRecord, 'candidates' | 'index' | 'state'>[] = [];
+
       for (const member of circle.members) {
         const rec = people.get(member);
         if (!rec?.birthday) continue;
@@ -596,27 +705,34 @@ export class Orchestrator {
         const day = midnightOf(year) + 2 * DAY < now ? midnightOf(year + 1) : midnightOf(year);
         const until = (day - now) / DAY;
         if (until > 14 || until < -2) continue;
-        const candidates = candidatesFor(circle, member);
-        if (candidates.length === 0) continue;
-        await ask({
+        found.push({
           key: `bday-${member}-${circle.id}-${new Date(day).getUTCFullYear()}`,
           circle: circle.id, occasion: 'birthday', honoree: member, surprise: false, title: `${rec.name}'s birthday`,
-          window: { start: Math.max(now + 12 * HOUR, day - 2 * DAY), end: day + 5 * DAY }, durationMs: OCCASION_LENGTH.birthday, candidates, index: 0, state: 'asking',
+          window: { start: Math.max(now + 12 * HOUR, day - 2 * DAY), end: day + 5 * DAY }, durationMs: OCCASION_LENGTH.birthday,
         });
       }
-      const first = people.get(circle.members[0]!);
-      const tz = first?.prefs.tz ?? DEFAULT_PREFS.tz;
-      const p = localParts(now, tz);
-      const year = Number(p.dateKey.slice(0, 4));
-      if (p.dateKey >= `${year}-10-17` && p.dateKey <= `${year}-10-31`) {
-        const halloween = startOfLocalDay(Date.UTC(year, 9, 31, 12), tz);
-        const candidates = candidatesFor(circle, null);
-        if (candidates.length > 0) {
-          await ask({
-            key: `halloween-${circle.id}-${year}`, circle: circle.id, occasion: 'halloween', honoree: null, surprise: false, title: 'Halloween',
-            window: { start: Math.max(now + 12 * HOUR, halloween - 2 * DAY), end: halloween + DAY }, durationMs: OCCASION_LENGTH.halloween, candidates, index: 0, state: 'asking',
-          });
-        }
+
+      const anchor = people.get(circle.members.find((m) => people.get(m) && !isDemoPerson(m)) ?? circle.members[0]!);
+      const tz = anchor?.prefs.tz ?? DEFAULT_PREFS.tz;
+      for (const f of upcomingFestivals(localParts(now, tz).dateKey, 14, circle.festivals ?? DEFAULT_FESTIVALS)) {
+        const [y, m, d] = f.date.split('-').map(Number) as [number, number, number];
+        const day = localToInstant(y, m, d, 0, 0, tz);
+        const occasion: Occasion = f.id === 'halloween' ? 'halloween' : 'festival';
+        const durationMs = OCCASION_LENGTH[occasion];
+        const window = { start: Math.max(now + 12 * HOUR, day - 2 * DAY), end: day + DAY };
+        if (window.end - window.start < durationMs) continue;
+        found.push({ key: `${f.id}-${circle.id}-${y}`, circle: circle.id, occasion, honoree: null, surprise: false, title: f.name, window, durationMs });
+      }
+
+      for (const occ of found) {
+        if (await this.d.store.get('offer', occ.key)) continue;
+        const candidates = candidatesFor(circle, occ.honoree);
+        if (candidates.length === 0) continue;
+        const offer: OfferRecord = { ...occ, candidates, index: 0, state: 'asking' };
+        await this.d.store.put('offer', offer.key, offer);
+        created++;
+        if (mode === 'ask') await this.askHost(offer);
+        else await this.autoStart(offer);
       }
     }
     // hosts who said yes while the cap was in force: start as soon as it clears
@@ -631,6 +747,7 @@ export class Orchestrator {
       if (r.ok) {
         offer.state = 'started';
         await this.d.store.put('offer', offer.key, offer);
+        if (offer.auto) await this.announceAuto(offer);
       }
     }
     return created;
@@ -642,7 +759,7 @@ export class Orchestrator {
    * Run every few minutes. Idempotent: running it twice at the same moment changes nothing the second time.
    * It times out slow plans, offers new occasions to hosts, and runs one round of coffee matching a day.
    */
-  async tick(): Promise<{ timeouts: number; offers: number; pairs: number; delivered: number; reminders: number }> {
+  async tick(): Promise<{ timeouts: number; offers: number; pairs: number; delivered: number; reminders: number; learned: number }> {
     const now = this.d.now();
     let timeouts = 0;
     const delivered = await this.flushOutbox(now);
@@ -672,10 +789,11 @@ export class Orchestrator {
         timeouts++;
       }
     }
+    const learned = await this.discoverBirthdays(now);
     const offers = await this.findOccasions(now);
     const pairs = await this.pairRound(now);
     const reminders = await this.sendReminders(now);
-    return { timeouts, offers, pairs, delivered, reminders };
+    return { timeouts, offers, pairs, delivered, reminders, learned };
   }
 
   /** One reminder, the day before, for every plan that is on. Plans that already started are skipped, not reminded late. */
