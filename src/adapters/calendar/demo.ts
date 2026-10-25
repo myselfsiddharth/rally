@@ -64,10 +64,16 @@ export class DemoCalendar implements CalendarPort {
   }
 
   async insertEvent(person: PersonId, event: { title: string; interval: Interval; description?: string }): Promise<{ id: string }> {
-    const added = (await this.store.get<{ title: string; interval: Interval }[]>('demoevents', person)) ?? [];
-    added.push({ title: event.title, interval: event.interval });
+    const added = (await this.store.get<{ id?: string; title: string; interval: Interval }[]>('demoevents', person)) ?? [];
+    const id = `demo-${person}-${added.length + 1}-${event.interval.start}`;
+    added.push({ id, title: event.title, interval: event.interval });
     await this.store.put('demoevents', person, added);
-    return { id: `demo-${person}-${added.length}` };
+    return { id };
+  }
+
+  async deleteEvent(person: PersonId, id: string): Promise<void> {
+    const added = (await this.store.get<{ id?: string }[]>('demoevents', person)) ?? [];
+    await this.store.put('demoevents', person, added.filter((e) => e.id !== id));
   }
 }
 

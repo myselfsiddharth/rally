@@ -301,6 +301,7 @@ describe('HybridCalendar', () => {
       connected: async (p: string) => p === 'real',
       busy: async (p: string) => { calls.push(`google:${p}`); return [{ start: window.start, end: window.start + 3_600_000 }]; },
       insertEvent: async (p: string) => { calls.push(`google-insert:${p}`); return { id: 'g' }; },
+      deleteEvent: async () => undefined,
     };
     const hybrid = new HybridCalendar(google, new DemoCalendar(new MemoryStore()));
     expect(await hybrid.kind('real')).toBe('connected');
@@ -311,5 +312,36 @@ describe('HybridCalendar', () => {
     await hybrid.insertEvent('real', { title: 't', interval: window });
     await hybrid.insertEvent('guest', { title: 't', interval: window });
     expect(calls).toEqual(['google:real', 'google-insert:real']);
+  });
+});
+
+describe('deleting events', () => {
+  it('Google: sends a DELETE for the event id and treats an already-missing event as fine', async () => {
+    const { calls, fetchFn } = recorder([new Response(null, { status: 204 }), new Response(null, { status: 404 }), new Response(null, { status: 500 })]);
+    const cal = new GoogleCalendar({ accessToken: async () => 'tok', fetchFn });
+    await cal.deleteEvent('p', 'ev 1');
+    await cal.deleteEvent('p', 'gone');
+    expect(calls[0]!.url).toBe('https://www.googleapis.com/calendar/v3/calendars/primary/events/ev%201');
+    expect(calls[0]!.init.method).toBe('DELETE');
+    await expect(cal.deleteEvent('p', 'x')).rejects.toThrow('status 500');
+  });
+  it('Demo and Hybrid: remove the event from the right calendar', async () => {
+    const store = new MemoryStore();
+    const demo = new DemoCalendar(store);
+    const slot = { start: Date.UTC(2026, 9, 26, 19), end: Date.UTC(2026, 9, 26, 20) };
+    const { id } = await demo.insertEvent('p', { title: 't', interval: slot });
+    await demo.deleteEvent('p', id);
+    expect(await store.get('demoevents', 'p')).toEqual([]);
+    const google = { connected: async (p: string) => p === 'real', busy: async () => [], insertEvent: async () => ({ id: 'g1' }), deleteEvent: async (_p: string, i: string) => { deleted.push(i); } };
+    const deleted: string[] = [];
+    const hybrid = new HybridCalendar(google, demo);
+    const made = await hybrid.insertEvent('real', { title: 't', interval: slot });
+    expect(made.id).toBe('g:g1');
+    await hybrid.deleteEvent('real', made.id);
+    expect(deleted).toEqual(['g1']);
+    const guest = await hybrid.insertEvent('guest', { title: 't', interval: slot });
+    expect(guest.id.startsWith('d:')).toBe(true);
+    await hybrid.deleteEvent('guest', guest.id);
+    expect(await store.get('demoevents', 'guest')).toEqual([]);
   });
 });

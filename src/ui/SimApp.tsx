@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowCounterClockwise, ArrowsClockwise, Pause, Play, SkipForward } from '@phosphor-icons/react/dist/ssr';
 import type { SimResult } from '../sim/runner';
 import { Conversation } from './Conversation';
 import { MetricsPanel } from './MetricsPanel';
@@ -106,18 +107,18 @@ export function SimApp() {
       </div>
 
       {failed && <p className="notice">The replay data could not be loaded. Run <code>npm run gen:sim</code> and reload.</p>}
-      {!data && !failed && <p className="notice">Loading run {seed}...</p>}
+      {!data && !failed && <p className="notice" aria-busy="true">Loading run {seed}...</p>}
 
       {data && (
         <>
-          <div className="sim-grid">
+          <div className="console">
             <aside className="plans" aria-label="Plans in this run">
               <div className="tabs" role="tablist">
                 <button type="button" role="tab" aria-selected={tab === 'parties'} onClick={() => setTab('parties')}>
-                  Parties ({data.parties.length})
+                  Parties <span className="tab-count">{data.parties.length}</span>
                 </button>
                 <button type="button" role="tab" aria-selected={tab === 'pairs'} onClick={() => setTab('pairs')}>
-                  One-on-ones ({data.pairs.length})
+                  Coffees <span className="tab-count">{data.pairs.length}</span>
                 </button>
               </div>
               <ul className="plan-list">
@@ -130,7 +131,11 @@ export function SimApp() {
                             {p.slot ? dayLabel(p.slot.start) : p.startedAt ? dayLabel(p.startedAt) : 'not started'}
                           </span>
                           <span className={`status status-${p.status}`}>{STATUS_LABEL[p.status] ?? p.status}</span>
-                          {p.reassigned > 0 && <span className="handover">{p.reassigned} handed over</span>}
+                          {p.reassigned > 0 && (
+                            <span className="handover">
+                              <ArrowsClockwise size={13} weight="bold" aria-hidden="true" /> {p.reassigned} handed over
+                            </span>
+                          )}
                         </button>
                       </li>
                     ))
@@ -150,13 +155,30 @@ export function SimApp() {
 
             <section className="stage" aria-label="Agent conversation">
               <header className="stage-head">
-                <h2>{party?.title ?? (pair ? `${names[pair.a]} and ${names[pair.b]}` : 'Pick a plan')}</h2>
+                <div className="stage-title">
+                  <h2>{party?.title ?? (pair ? `${names[pair.a]} and ${names[pair.b]}` : 'Pick a plan')}</h2>
+                  <p className="stage-count" aria-hidden="true">{shown} of {messages.length} messages</p>
+                </div>
                 <div className="controls">
-                  <button type="button" onClick={() => { setShown(0); setPlaying(true); }} aria-label="Restart">Restart</button>
-                  <button type="button" className="primary" onClick={() => { if (shown >= messages.length) setShown(0); setPlaying((p) => !p); }}>
+                  <button type="button" className="ibtn" onClick={() => { setShown(0); setPlaying(true); }} aria-label="Restart">
+                    <ArrowCounterClockwise size={20} weight="bold" aria-hidden="true" />
+                  </button>
+                  <button type="button" className="play" onClick={() => { if (shown >= messages.length) setShown(0); setPlaying((p) => !p); }}>
+                    {playing ? <Pause size={18} weight="fill" aria-hidden="true" /> : <Play size={18} weight="fill" aria-hidden="true" />}
                     {playing ? 'Pause' : shown >= messages.length && messages.length > 0 ? 'Replay' : 'Play'}
                   </button>
-                  <button type="button" onClick={() => { setPlaying(false); setShown((s) => Math.min(messages.length, s + 1)); }} aria-label="Next message">Next</button>
+                  <button type="button" className="ibtn" onClick={() => { setPlaying(false); setShown((s) => Math.min(messages.length, s + 1)); }} aria-label="Next message">
+                    <SkipForward size={20} weight="bold" aria-hidden="true" />
+                  </button>
+                  <input
+                    className="scrub"
+                    type="range"
+                    min={0}
+                    max={messages.length}
+                    value={shown}
+                    onChange={(e) => { setPlaying(false); setShown(Number(e.target.value)); }}
+                    aria-label="Position in the conversation"
+                  />
                   <div className="speeds" role="group" aria-label="Speed">
                     {[1, 2, 4].map((s) => (
                       <button key={s} type="button" aria-pressed={speed === s} onClick={() => setSpeed(s)}>
@@ -165,15 +187,6 @@ export function SimApp() {
                     ))}
                   </div>
                 </div>
-                <input
-                  className="scrub"
-                  type="range"
-                  min={0}
-                  max={messages.length}
-                  value={shown}
-                  onChange={(e) => { setPlaying(false); setShown(Number(e.target.value)); }}
-                  aria-label="Position in the conversation"
-                />
               </header>
               <Conversation messages={messages} shown={shown} highlights={state.highlights} names={names} />
             </section>
@@ -183,25 +196,27 @@ export function SimApp() {
               {pair && (
                 <section className="pair-card">
                   <h3>Coffee for two</h3>
-                  <p>{formatSlot(pair.interval)}</p>
+                  <p className="pair-when">{formatSlot(pair.interval)}</p>
                   <p className="pair-rule">
                     The second person is only asked after the first says yes, so nobody ever learns they were turned down.
                   </p>
                 </section>
               )}
               {week && weekPeople.length > 0 && (
-                <section className="week-card">
-                  <h3>Who was free</h3>
+                <details className="week-card" open>
+                  <summary>Who was free</summary>
                   <WeekStrip people={weekPeople} names={names} busy={data.busy} slot={week} />
                   <p className="week-note">Grey is busy. Pink is the time chosen. The agents compare only free time, never what the busy blocks are.</p>
-                </section>
+                </details>
               )}
             </aside>
           </div>
 
+          <MetricsPanel m={data.metrics} seed={seed} />
+
           {housekeeping.length > 0 && (
-            <section className="housekeeping">
-              <h3>What the agents did around the edges</h3>
+            <details className="housekeeping">
+              <summary>What the agents did around the edges <span className="tab-count">{housekeeping.length}</span></summary>
               <ul>
                 {housekeeping.map((n, i) => (
                   <li key={i}>
@@ -209,9 +224,8 @@ export function SimApp() {
                   </li>
                 ))}
               </ul>
-            </section>
+            </details>
           )}
-          <MetricsPanel m={data.metrics} seed={seed} />
         </>
       )}
     </div>

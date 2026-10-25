@@ -19,6 +19,13 @@ export const say = {
   pairAsk: (other: string, slot: Interval, tz: string) => `You and ${other} are both free ${formatSlot(slot, tz)}. Want to grab a coffee?`,
   pairYes: (other: string, slot: Interval, tz: string, added: boolean) => `It's on: coffee with ${other}, ${formatSlot(slot, tz)}.${added ? ' I put it on your calendar.' : ''}`,
   pairNo: () => 'Not this time.',
+  reminder: (title: string, slot: Interval, tz: string, jobs: string[]) => `Reminder: ${title} is ${formatSlot(slot, tz)}.${jobs.length ? ` You are on: ${jobs.join(', ')}.` : ''}`,
+  pairReminder: (other: string, slot: Interval, tz: string) => `Reminder: coffee with ${other}, ${formatSlot(slot, tz)}.`,
+  channelPlan: (title: string, slot: Interval, tz: string, lines: string[]) => `${title} is locked in for ${formatSlot(slot, tz)}.${lines.length ? `\n${lines.join('\n')}` : ''}`,
+  withdrewHost: (name: string, title: string, handed: { label: string; to: string | null }[]) =>
+    `${name} can't come to ${title} anymore.${handed.map((h) => (h.to ? ` ${h.label} went to ${h.to}.` : ` Nobody can take "${h.label}" yet, so I will ask you.`)).join('')}`,
+  withdrewPair: (name: string) => `${name} can't make your coffee anymore, so I took it off your calendar.`,
+  withdrawAck: () => `Okay, you are out. I told them and took it off your calendar.`,
   needCalendar: (title: string) => `I could not see your calendar for ${title}, so I counted you out. Connect it with /rally connect and I can include you next time.`,
 };
 
@@ -29,4 +36,5 @@ export const REASONS: Record<string, string> = {
   too_few: 'too few people said yes',
   host_declined: 'the host stepped back',
   host_cancelled: 'the host called it off',
+  host_withdrew: 'the host can no longer come',
 };

@@ -1,118 +1,206 @@
 import Link from 'next/link';
+import {
+  ArrowDown,
+  ArrowRight,
+  BellRinging,
+  CalendarCheck,
+  CheckCircle,
+  Coffee,
+  Confetti,
+  EyeSlash,
+  Flag,
+  ListChecks,
+  SealCheck,
+} from '@phosphor-icons/react/dist/ssr';
 import index from '../public/sim/index.json';
 import { HeroTicket } from '../src/ui/HeroTicket';
+import { SiteFooter, SiteHeader } from '../src/ui/SiteChrome';
 
 type Row = { metrics: { partiesCommitted: number; tasksReassigned: number; pairMeetups: number; capViolations: number; labelLeaks: number; doubleBookings: number; occasionsFolded: number; messageCount: number } };
 const runs = (index.seeds as unknown as Row[]).map((s) => s.metrics);
 const sum = (f: (m: Row['metrics']) => number) => runs.reduce((a, m) => a + f(m), 0);
 
+const STEPS = [
+  { icon: BellRinging, title: 'An agent notices', text: "A friend's birthday is ten days away." },
+  { icon: Flag, title: 'The host says go', text: 'The agents check the cap first. If the circle had a party in the last two weeks, they wait or fold it into the one already planned.' },
+  { icon: CalendarCheck, title: 'Calendars are compared, not shared', text: 'Each agent offers only free time. The planner picks the time that leaves the fewest people out and holds it while they answer.' },
+  { icon: ListChecks, title: 'Jobs go to people who can do them', text: 'A car, a place to host, a budget. The work is spread out so no one is stuck with everything, and every job has a backup.' },
+  { icon: SealCheck, title: 'Everyone answers, then it locks', text: 'At 80 percent ready it lands on everyone’s calendar. If nobody can do a job, the host decides.' },
+];
+
 export default function Home() {
+  const stats = [
+    { n: sum((m) => m.partiesCommitted), label: 'parties locked in' },
+    { n: sum((m) => m.tasksReassigned), label: 'jobs handed to a replacement after someone passed' },
+    { n: sum((m) => m.occasionsFolded), label: 'birthdays folded into a party already planned' },
+    { n: sum((m) => m.pairMeetups), label: 'coffees set up' },
+  ];
+  const safety = [
+    { n: sum((m) => m.capViolations), label: 'party caps broken' },
+    { n: sum((m) => m.labelLeaks), label: 'private details leaked' },
+    { n: sum((m) => m.doubleBookings), label: 'people double booked' },
+  ];
+
   return (
     <>
       <div className="hero-band">
-        <header className="top">
-          <Link href="/" className="logo">
-            <span className="logo-mark" aria-hidden="true" />
-            Rally
-          </Link>
-          <nav aria-label="Main">
-            <Link href="/sim">Watch it work</Link>
-            <a href="#rules">Rules</a>
-            <a href="#how">How it works</a>
-          </nav>
-        </header>
-        <section className="hero">
-          <div>
-            <h1>Your friends are free Friday. Your agent already asked.</h1>
-            <p className="hero-lede">
-              Rally gives every student a personal agent. It spots the birthday, finds the night everyone can come, hands out the jobs, and only comes to you when it needs a yes.
-            </p>
-            <div className="hero-actions">
-              <Link className="btn" href="/sim">Watch a month of plans</Link>
-              <a className="btn btn-ghost" href="#rules">See what stays private</a>
+        <SiteHeader current="home" />
+        <main id="main">
+          <section className="hero">
+            <div className="hero-copy">
+              <h1>Your friends are free Friday. Your agent already asked.</h1>
+              <p className="hero-lede">
+                Rally gives every student a personal agent. It finds the night everyone can come, hands out the jobs, and only comes to you when it needs a yes.
+              </p>
+              <div className="hero-actions">
+                <Link className="btn btn-lg" href="/sim">
+                  Watch a month of plans <ArrowRight size={20} weight="bold" aria-hidden="true" />
+                </Link>
+                <a className="text-link" href="#rules">
+                  See what stays private <ArrowDown size={18} weight="bold" aria-hidden="true" />
+                </a>
+              </div>
             </div>
-          </div>
-          <HeroTicket />
-        </section>
+            <HeroTicket />
+          </section>
+        </main>
       </div>
 
-      <main>
-        <section className="section" id="modes">
-          <h2>Two ways it keeps your people together</h2>
+      <div className="page">
+        <section className="section" id="modes" aria-labelledby="modes-h">
+          <h2 id="modes-h" className="section-title">Two kinds of plans</h2>
           <div className="modes">
-            <div className="mode">
-              <h3>Parties, never more than one every two weeks</h3>
+            <article className="mode mode-party">
+              <span className="mode-icon" aria-hidden="true"><Confetti size={28} weight="bold" /></span>
+              <h3>Parties</h3>
+              <p className="mode-tag">Never more than one every two weeks</p>
               <p>
-                Birthdays, Halloween, a concert in town. The agents find a time most people can do, give every job (the cake, the music, a ride) to someone who can actually do it, and line up a backup for each. If someone passes on the cake, it moves on by itself. When two birthdays land close together, they fold into the party that is already planned.
+                Birthdays, Halloween, a concert in town. The agents find a time most people can do and give every job to someone who can do it. If someone passes on the cake, it moves on by itself. Two birthdays close together fold into one party.
               </p>
-              <ul className="rules-list">
-                <li>14 days between parties in a friend circle</li>
-                <li>A backup for every job</li>
-                <li>The host decides only when nobody can</li>
-              </ul>
-            </div>
-            <div className="mode">
-              <h3>Coffee for two, the small plans that keep friendships going</h3>
+              <dl className="facts">
+                <div><dt>14 days</dt><dd>between parties in a friend circle</dd></div>
+                <div><dt>A backup</dt><dd>for every job</dd></div>
+                <div><dt>The host</dt><dd>decides only when nobody can</dd></div>
+              </dl>
+            </article>
+            <article className="mode mode-pair">
+              <span className="mode-icon" aria-hidden="true"><Coffee size={28} weight="bold" /></span>
+              <h3>Coffee for two</h3>
+              <p className="mode-tag">The small plans that keep friendships going</p>
               <p>
-                When two friends both have an open evening hour and have not seen each other in a while, one agent asks one person. Only if they say yes does the other get asked, so nobody finds out they were turned down. Two yeses and it lands on both calendars.
+                When two friends both have an open evening hour and haven&apos;t seen each other in a while, one agent asks one person. Only if they say yes is the other asked, so nobody learns they were turned down. Two yeses and it lands on both calendars.
               </p>
-              <ul className="rules-list">
-                <li>Asked one at a time</li>
-                <li>At most 2 invites a week</li>
-                <li>Never during quiet hours</li>
-              </ul>
-            </div>
+              <dl className="facts">
+                <div><dt>One at a time</dt><dd>the second person hears only after a yes</dd></div>
+                <div><dt>2 a week</dt><dd>the most invites anyone gets</dd></div>
+                <div><dt>Quiet hours</dt><dd>never disturbed during them</dd></div>
+              </dl>
+            </article>
           </div>
         </section>
 
-        <section className="section" id="rules">
-          <h2>What your agent knows, and what it tells anyone else</h2>
+        <section className="section split" id="how" aria-labelledby="how-h">
+          <div className="split-head">
+            <h2 id="how-h" className="section-title">How one plan comes together</h2>
+            <p className="section-lede">Plain, tested code makes every decision. A language model never decides who is free, who brings the cake, or who gets invited.</p>
+          </div>
+          <ol className="timeline">
+            {STEPS.map(({ icon: Icon, title, text }) => (
+              <li key={title}>
+                <span className="node" aria-hidden="true"><Icon size={24} weight="bold" /></span>
+                <div>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section className="section" id="rules" aria-labelledby="rules-h">
+          <div className="section-head">
+            <h2 id="rules-h" className="section-title">What your agent knows, and what it tells anyone else</h2>
+          </div>
           <div className="table-wrap">
             <table className="shares">
               <thead>
                 <tr><th scope="col">The thing</th><th scope="col">Your agent</th><th scope="col">Other agents</th><th scope="col">The group</th></tr>
               </thead>
               <tbody>
-                <tr><td>What is on your calendar</td><td>Reads it</td><td className="never">Never</td><td className="never">Never</td></tr>
-                <tr><td>When you are free</td><td>Yes</td><td>Free windows for the dates in question</td><td>Only the time chosen</td></tr>
-                <tr><td>Your limits: quiet hours, invites a week, people to skip</td><td>Yes</td><td>Only what a job needs, like "no car"</td><td className="never">Never</td></tr>
-                <tr><td>Dietary needs</td><td>Yes</td><td className="never">Never</td><td>A general "check what everyone can eat"</td></tr>
-                <tr><td>Who said no, and why</td><td>Yours alone</td><td>"Someone can't", never who</td><td className="never">Never</td></tr>
+                <tr>
+                  <th scope="row">What is on your calendar</th>
+                  <td data-label="Your agent">Reads it</td>
+                  <td data-label="Other agents" className="never"><EyeSlash size={18} weight="bold" aria-hidden="true" />Never</td>
+                  <td data-label="The group" className="never"><EyeSlash size={18} weight="bold" aria-hidden="true" />Never</td>
+                </tr>
+                <tr>
+                  <th scope="row">When you are free</th>
+                  <td data-label="Your agent">Yes</td>
+                  <td data-label="Other agents">Free windows for the dates in question</td>
+                  <td data-label="The group">Only the time chosen</td>
+                </tr>
+                <tr>
+                  <th scope="row">Your limits: quiet hours, invites a week, people to skip</th>
+                  <td data-label="Your agent">Yes</td>
+                  <td data-label="Other agents">Only what a job needs, like &quot;no car&quot;</td>
+                  <td data-label="The group" className="never"><EyeSlash size={18} weight="bold" aria-hidden="true" />Never</td>
+                </tr>
+                <tr>
+                  <th scope="row">Dietary needs</th>
+                  <td data-label="Your agent">Yes</td>
+                  <td data-label="Other agents" className="never"><EyeSlash size={18} weight="bold" aria-hidden="true" />Never</td>
+                  <td data-label="The group">A general &quot;check what everyone can eat&quot;</td>
+                </tr>
+                <tr>
+                  <th scope="row">Who said no, and why</th>
+                  <td data-label="Your agent">Yours alone</td>
+                  <td data-label="Other agents">&quot;Someone can&apos;t&quot;, never who</td>
+                  <td data-label="The group" className="never"><EyeSlash size={18} weight="bold" aria-hidden="true" />Never</td>
+                </tr>
               </tbody>
             </table>
           </div>
-          <p className="prose-big">Agents propose. You decide. Nothing goes on your calendar, and no job is yours, until you say yes.</p>
-        </section>
-
-        <section className="section" id="numbers">
-          <h2>What happened when we ran it five times</h2>
-          <p className="prose-big">
-            Across five simulated runs of 30 fictional students over eight weeks, the agents locked in <b>{sum((m) => m.partiesCommitted)} parties</b>, handed <b>{sum((m) => m.tasksReassigned)} jobs</b> to a replacement after someone passed, folded <b>{sum((m) => m.occasionsFolded)} birthdays</b> into parties already planned, and set up <b>{sum((m) => m.pairMeetups)} coffees</b>. They broke the party cap <b>{sum((m) => m.capViolations)} times</b>, leaked <b>{sum((m) => m.labelLeaks)} private details</b>, and double booked <b>{sum((m) => m.doubleBookings)} people</b>.
+          <p className="pledge">
+            <strong>Agents propose. You decide.</strong> Nothing goes on your calendar, and no job is yours, until you say yes.
           </p>
-          <p className="prose-big">Those runs are simulations: the students and their calendars are made up, but every decision came from the same planning engine the bot uses.</p>
-          <p style={{ marginTop: 20 }}><Link className="btn" href="/sim">Replay any of them</Link></p>
         </section>
 
-        <section className="section" id="how">
-          <h2>How one plan comes together</h2>
-          <ol className="steps">
-            <li><b>An agent notices.</b>A friend's birthday is ten days away.</li>
-            <li><b>The host says go.</b>The agents first check the cap: has this friend circle had a party in the last two weeks? If so, they wait, or fold it into the one already planned.</li>
-            <li><b>Calendars are compared, not shared.</b>Each agent offers only free time. The planner picks the time that leaves the fewest people out, and holds it on their calendars while they answer.</li>
-            <li><b>Jobs go to people who can do them.</b>Needs a car, needs a place to host, needs a budget. Work is spread so the same person is not stuck with everything, and every job has a backup.</li>
-            <li><b>Everyone answers, then it locks.</b>Once the venue is settled and the plan is 80 percent ready, it lands on everyone's calendar. If nobody can do a job, the host is asked to decide.</li>
-          </ol>
-          <ul className="checks">
-            <li>The decisions are plain, tested code. A language model never decides who is free, who brings the cake, or who gets invited.</li>
-            <li>The rules are tested with random inputs: thousands of made-up calendars, declines and ghosts. A run that breaks a cap or leaks a detail fails the build.</li>
-            <li>Every simulated month is reproducible: the same seed gives the same month, message for message.</li>
-          </ul>
+        <section className="section" id="numbers" aria-labelledby="numbers-h">
+          <div className="stats">
+            <h2 id="numbers-h" className="stats-title">What happened when we ran it five times</h2>
+            <p className="stats-sub">Five simulated runs, 30 fictional students each, eight weeks long.</p>
+            <dl className="stat-row">
+              {stats.map((s) => (
+                <div key={s.label} className="stat">
+                  <dt className="stat-label">{s.label}</dt>
+                  <dd className="stat-num">{s.n}</dd>
+                </div>
+              ))}
+            </dl>
+            <dl className="safety-row">
+              {safety.map((s) => (
+                <div key={s.label} className="safe">
+                  <CheckCircle size={26} weight="fill" aria-hidden="true" />
+                  <dt className="safe-label">{s.label}</dt>
+                  <dd className="safe-num">{s.n}</dd>
+                </div>
+              ))}
+            </dl>
+            <div className="stats-foot">
+              <ul>
+                <li>The students and calendars are made up, but every decision came from the same planning engine the bot uses.</li>
+                <li>The rules are tested against thousands of random calendars, declines and ghosts. A run that breaks one fails the build.</li>
+                <li>The same seed gives the same month, message for message.</li>
+              </ul>
+              <Link className="btn btn-yellow btn-lg" href="/sim">
+                Replay any run <ArrowRight size={20} weight="bold" aria-hidden="true" />
+              </Link>
+            </div>
+          </div>
         </section>
-      </main>
+      </div>
 
-      <footer className="footer">
-        <p>Built at DevHacks 2026 for the Cubbie Hackathon, Track 2. The code is open: <a href="https://github.com/myselfsiddharth/rally">github.com/myselfsiddharth/rally</a>. <Link href="/privacy">Privacy</Link></p>
-      </footer>
+      <SiteFooter />
     </>
   );
 }

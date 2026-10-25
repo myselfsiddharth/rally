@@ -24,4 +24,14 @@ export class FakeCalendar implements CalendarPort {
     this.calendars[person]!.events.push({ interval: event.interval, label: event.title });
     return { id: `fake-${this.inserted.length}` };
   }
+  deleted: { person: PersonId; id: string }[] = [];
+  async deleteEvent(person: PersonId, id: string): Promise<void> {
+    const n = Number(id.replace('fake-', ''));
+    const added = this.inserted[n - 1];
+    if (added && added.person === person) {
+      const cal = this.calendars[person]!;
+      cal.events = cal.events.filter((e) => !(e.label === added.title && e.interval.start === added.interval.start && e.interval.end === added.interval.end));
+    }
+    this.deleted.push({ person, id });
+  }
 }

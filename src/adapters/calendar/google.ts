@@ -50,6 +50,12 @@ export class GoogleCalendar implements CalendarPort {
     return busy.map((b) => ({ start: Date.parse(b.start), end: Date.parse(b.end) })).filter((i) => Number.isFinite(i.start) && Number.isFinite(i.end));
   }
 
+  async deleteEvent(person: PersonId, id: string): Promise<void> {
+    const token = await this.token(person);
+    const res = await this.fetchFn(`${API}/calendars/primary/events/${encodeURIComponent(id)}`, { method: 'DELETE', headers: { authorization: `Bearer ${token}` } });
+    if (!res.ok && res.status !== 404 && res.status !== 410) throw new CalendarError(`Google event delete failed with status ${res.status}`, res.status);
+  }
+
   async insertEvent(person: PersonId, event: { title: string; interval: Interval; description?: string }): Promise<{ id: string }> {
     const token = await this.token(person);
     const res = await this.fetchFn(`${API}/calendars/primary/events`, {

@@ -35,11 +35,16 @@ export interface PartyRecord {
   title: string;
   proposedAt?: Ms;
   offeredAt: Record<string, Ms>;
+  /** The calendar event we added for each person, so it can be removed if they back out. */
+  eventIds?: Record<PersonId, string>;
+  reminded?: boolean;
 }
 
 export interface PairRecord {
   plan: PairPlan;
   askedAt?: Ms;
+  eventIds?: Record<PersonId, string>;
+  reminded?: boolean;
 }
 
 export interface OfferRecord {
@@ -75,6 +80,16 @@ export interface Deps {
 }
 
 export type StartResult = { ok: true; planId: string } | { ok: false; reason: 'party_cap' | 'unknown_circle' | 'not_a_member' | 'too_small'; nextAt?: Ms };
+
+/** Demo friends are fictional circle members whose agents answer on their own, so one person can see a whole plan. */
+export const DEMO_PREFIX = 'demo:';
+export const isDemoPerson = (id: PersonId): boolean => id.startsWith(DEMO_PREFIX);
+const DEMO_FRIENDS: { id: PersonId; name: string; prefs: Partial<Prefs> }[] = [
+  { id: 'demo:maya', name: 'Maya (demo)', prefs: { hasCar: true } },
+  { id: 'demo:omar', name: 'Omar (demo)', prefs: { canHost: true } },
+  { id: 'demo:priya', name: 'Priya (demo)', prefs: { hasCar: true, budget: 'high' } },
+];
+const REMIND_BEFORE = 24 * HOUR;
 
 const COLLECT_TIMEOUT = 12 * HOUR;
 const RSVP_TIMEOUT = 24 * HOUR;
@@ -221,8 +236,38 @@ export class Orchestrator {
   private async tzOf(id: PersonId): Promise<string> {
     return (await this.person(id))?.prefs.tz ?? DEFAULT_PREFS.tz;
   }
+  /** Add three fictional friends to a circle. Their agents answer by themselves, and they are always labelled (demo). */
+  async addDemoFriends(circleId: CircleId, forPerson: PersonId): Promise<string[]> {
+    const circle = await this.d.store.get<CircleRecord>('circle', circleId);
+    if (!circle) return [];
+    const tz = await this.tzOf(forPerson);
+    for (const f of DEMO_FRIENDS) {
+      if (!(await this.person(f.id))) await this.d.store.put('person', f.id, { id: f.id, name: f.name, prefs: { ...DEFAULT_PREFS, tz, ...f.prefs }, paused: false } satisfies PersonRecord);
+      if (!circle.members.includes(f.id)) circle.members.push(f.id);
+    }
+    await this.d.store.put('circle', circle.id, circle);
+    return DEMO_FRIENDS.map((f) => f.name);
+  }
+
+  /** A demo friend answers straight away. Omar passes on the first job he is offered, to show the hand-over. */
+  private async demoAnswer(person: PersonId, text: string, buttons: Button[] = []): Promise<void> {
+    const find = (re: RegExp) => buttons.find((b) => re.test(b.id));
+    let pick = find(/^offer:.*:go$/) ?? find(/:rsvp_yes$/) ?? find(/^pair:.*:yes$/);
+    const accept = find(/:task_accept:/);
+    const pass = find(/:task_decline:/);
+    if (!pick && accept && pass) {
+      const key = `${accept.id.split(':')[1]}:${person}`;
+      const first = person === 'demo:omar' && !text.startsWith('Someone had to drop') && !(await this.d.store.get('demostate', key));
+      if (first) await this.d.store.put('demostate', key, true);
+      pick = first ? pass : accept;
+    }
+    pick ??= find(/:host_waive:/);
+    if (pick) await this.handleButton(person, pick.id);
+  }
+
   /** Send a direct message, or hold it until morning if it is the student's quiet time. */
   private async send(person: PersonId, text: string, buttons?: Button[]): Promise<void> {
+    if (isDemoPerson(person)) return this.demoAnswer(person, text, buttons);
     const prefs = (await this.person(person))?.prefs ?? DEFAULT_PREFS;
     if (!new Governor().canDisturb(prefs, this.d.now()).ok) {
       const id = `${this.d.now()}-${await this.counter('outbox')}`;
@@ -295,6 +340,24 @@ export class Orchestrator {
     await this.d.store.put('meta', 'ledger', step.ledger);
     await this.saveGovernor(governor);
     for (const m of step.out) await this.deliverParty(rec, m);
+    if (prev !== 'committed' && step.plan.status === 'committed' && step.plan.lockedAt === now && !step.plan.surprise) await this.announce(rec);
+  }
+
+  /** Tell the whole friend circle in its channel once a plan locks in. Never for a surprise. */
+  private async announce(rec: PartyRecord): Promise<void> {
+    const { plan } = rec;
+    if (!plan.slot || !plan.tasks) return;
+    const host = await this.person(plan.host);
+    const lines: string[] = [];
+    for (const spec of plan.tasks.specs) {
+      const owner = plan.tasks.owner[spec.id];
+      if (owner && plan.tasks.state[spec.id] === 'accepted') lines.push(`${await this.nameOf(owner)}: ${spec.label}`);
+    }
+    try {
+      await this.d.platform.post(plan.circle, say.channelPlan(rec.title, plan.slot.interval, host?.prefs.tz ?? DEFAULT_PREFS.tz, lines));
+    } catch {
+      /* the channel may be gone or the bot muted; the DMs already went out */
+    }
   }
 
   private async deliverParty(rec: PartyRecord, m: Message): Promise<void> {
@@ -324,9 +387,18 @@ export class Orchestrator {
         ]);
       }
       case 'COMMIT': {
+        if (m.body.update) return this.send(m.to, say.commit(rec.title, slot!, tz, false).replace('is locked in', 'is back on'));
         const added = await this.addToCalendar(m.to, rec.title, slot!, `Planned with Rally`);
+        if (added.id) await this.rememberEvent('party', planId, m.to, added.id);
         await this.markMet(rec.plan.guests.filter((g) => rec.plan.rsvp[g] === 'yes'), slot!.end);
-        return this.send(m.to, added === 'overlap' ? say.overlap(rec.title) : say.commit(rec.title, slot!, tz, added === 'added'));
+        return this.send(m.to, added.result === 'overlap' ? say.overlap(rec.title) : say.commit(rec.title, slot!, tz, added.result === 'added'), [
+          { id: `party:${planId}:withdraw`, label: "Can't come anymore", style: 'danger' },
+        ]);
+      }
+      case 'WITHDREW': {
+        const handed = ((m.body.handed as { label?: string; to: string | null }[] | undefined) ?? []).map((h) => ({ label: h.label ?? 'a job', to: h.to }));
+        const named = await Promise.all(handed.map(async (h) => ({ label: h.label, to: h.to ? await this.nameOf(h.to) : null })));
+        return this.send(m.to, say.withdrewHost(await this.nameOf(String(m.body.person)), rec.title, named));
       }
       case 'CANCEL':
         return this.send(m.to, say.cancelled(rec.title, REASONS[String(m.body.reason)] ?? String(m.body.reason)));
@@ -350,26 +422,50 @@ export class Orchestrator {
     await this.dispatchParty(rec.plan.id, { id: `${rec.plan.id}:avail:${person}`, type: 'availability', person, free });
   }
 
-  private async addToCalendar(person: PersonId, title: string, interval: Interval, description: string): Promise<'added' | 'overlap' | 'not_connected'> {
-    if (!(await this.d.calendar.connected(person))) return 'not_connected';
+  private async addToCalendar(person: PersonId, title: string, interval: Interval, description: string): Promise<{ result: 'added' | 'overlap' | 'not_connected'; id?: string }> {
+    if (!(await this.d.calendar.connected(person))) return { result: 'not_connected' };
     try {
       const busy = await this.d.calendar.busy(person, interval);
-      if (busy.length > 0) return 'overlap';
-      await this.d.calendar.insertEvent(person, { title, interval, description });
-      return 'added';
+      if (busy.length > 0) return { result: 'overlap' };
+      const made = await this.d.calendar.insertEvent(person, { title, interval, description });
+      return { result: 'added', id: made.id };
     } catch {
-      return 'not_connected';
+      return { result: 'not_connected' };
     }
+  }
+
+  /** Remember which calendar event belongs to whom, so backing out can remove it. */
+  private async rememberEvent(ns: 'party' | 'pair', planId: string, person: PersonId, eventId: string): Promise<void> {
+    const rec = await this.d.store.get<PartyRecord | PairRecord>(ns, planId);
+    if (!rec) return;
+    rec.eventIds = { ...(rec.eventIds ?? {}), [person]: eventId };
+    await this.d.store.put(ns, planId, rec);
+  }
+
+  /** Take someone's event for a plan off their calendar. Never fails the caller. */
+  private async removeEvent(ns: 'party' | 'pair', planId: string, person: PersonId): Promise<void> {
+    const rec = await this.d.store.get<PartyRecord | PairRecord>(ns, planId);
+    const id = rec?.eventIds?.[person];
+    if (!rec || !id) return;
+    try {
+      await this.d.calendar.deleteEvent(person, id);
+    } catch {
+      /* the event may already be gone, or the calendar disconnected; backing out still counts */
+    }
+    const rest = { ...(rec.eventIds ?? {}) };
+    delete rest[person];
+    rec.eventIds = rest;
+    await this.d.store.put(ns, planId, rec);
   }
 
   // ------------------------------------------------------------ pairs
 
-  private async dispatchPair(pairId: string, type: PairEvent['type'], eventId: string): Promise<void> {
+  private async dispatchPair(pairId: string, type: PairEvent['type'], eventId: string, person?: PersonId): Promise<void> {
     const rec = await this.d.store.get<PairRecord>('pair', pairId);
     if (!rec) return;
     const now = this.d.now();
     const governor = await this.governor();
-    const step = reducePair(rec.plan, { id: eventId, at: now, type }, { governor });
+    const step = reducePair(rec.plan, { id: eventId, at: now, type, person }, { governor });
     rec.plan = step.plan;
     if (type === 'start' && step.out.length > 0) rec.askedAt = now;
     await this.d.store.put('pair', pairId, rec);
@@ -385,8 +481,12 @@ export class Orchestrator {
         ]);
       } else if (m.kind === 'PAIR_YES') {
         const added = await this.addToCalendar(m.to, `Coffee with ${other}`, slot!, 'Set up by Rally');
-        await this.send(m.to, say.pairYes(other, slot!, tz, added === 'added'));
+        if (added.id) await this.rememberEvent('pair', pairId, m.to, added.id);
+        await this.send(m.to, say.pairYes(other, slot!, tz, added.result === 'added'), [{ id: `pair:${pairId}:cancel`, label: "Can't make it anymore", style: 'danger' }]);
         await this.markMet([m.to, String(m.body.with)], slot!.end);
+      } else if (m.kind === 'WITHDREW') {
+        await this.removeEvent('pair', pairId, m.to);
+        await this.send(m.to, say.withdrewPair(await this.nameOf(String(m.body.person))));
       } else if (m.kind === 'PAIR_NO' && m.to !== 'coordinator') {
         await this.send(m.to, say.pairNo());
       }
@@ -402,15 +502,26 @@ export class Orchestrator {
     if (kind === 'party' && id && action) {
       const rec = await this.d.store.get<PartyRecord>('party', id);
       if (!rec || !rec.plan.guests.includes(actor)) return 'That plan is not yours.';
-      const types: Record<string, PartyEvent['type']> = { rsvp_yes: 'rsvp_yes', rsvp_no: 'rsvp_no', task_accept: 'task_accept', task_decline: 'task_decline', host_waive: 'host_waive', cancel: 'cancel' };
+      const types: Record<string, PartyEvent['type']> = { rsvp_yes: 'rsvp_yes', rsvp_no: 'rsvp_no', task_accept: 'task_accept', task_decline: 'task_decline', host_waive: 'host_waive', cancel: 'cancel', withdraw: 'withdraw' };
       const type = types[action];
       if (!type) return 'That button is not recognised.';
       await this.dispatchParty(id, { id: eventId, type, person: actor, taskId: arg });
+      if (type === 'withdraw') {
+        await this.removeEvent('party', id, actor);
+        const after = await this.d.store.get<PartyRecord>('party', id);
+        if (after?.plan.status === 'cancelled') for (const g of after.plan.guests) await this.removeEvent('party', id, g);
+        return say.withdrawAck();
+      }
       return { rsvp_yes: "Great, you're in.", rsvp_no: 'No problem, thanks for letting me know.', task_accept: 'Thanks, it is yours.', task_decline: 'Okay, I will find someone else.', host_waive: 'Skipped.', cancel: 'Called off.' }[action] ?? 'Done.';
     }
     if (kind === 'pair' && id && action) {
       const rec = await this.d.store.get<PairRecord>('pair', id);
       if (!rec || (rec.plan.a !== actor && rec.plan.b !== actor)) return 'That invitation is not yours.';
+      if (action === 'cancel') {
+        await this.dispatchPair(id, 'withdraw', eventId, actor);
+        await this.removeEvent('pair', id, actor);
+        return say.withdrawAck();
+      }
       const role = rec.plan.a === actor ? 'a' : 'b';
       await this.dispatchPair(id, `${role}_${action === 'yes' ? 'yes' : 'no'}` as PairEvent['type'], eventId);
       return action === 'yes' ? 'Nice. I will let you know when it is confirmed.' : 'No problem.';
@@ -531,7 +642,7 @@ export class Orchestrator {
    * Run every few minutes. Idempotent: running it twice at the same moment changes nothing the second time.
    * It times out slow plans, offers new occasions to hosts, and runs one round of coffee matching a day.
    */
-  async tick(): Promise<{ timeouts: number; offers: number; pairs: number; delivered: number }> {
+  async tick(): Promise<{ timeouts: number; offers: number; pairs: number; delivered: number; reminders: number }> {
     const now = this.d.now();
     let timeouts = 0;
     const delivered = await this.flushOutbox(now);
@@ -563,7 +674,47 @@ export class Orchestrator {
     }
     const offers = await this.findOccasions(now);
     const pairs = await this.pairRound(now);
-    return { timeouts, offers, pairs, delivered };
+    const reminders = await this.sendReminders(now);
+    return { timeouts, offers, pairs, delivered, reminders };
+  }
+
+  /** One reminder, the day before, for every plan that is on. Plans that already started are skipped, not reminded late. */
+  private async sendReminders(now: Ms): Promise<number> {
+    let sent = 0;
+    for (const rec of await this.d.store.list<PartyRecord>('party')) {
+      const slot = rec.plan.slot?.interval;
+      if (rec.plan.status !== 'committed' || !slot || rec.reminded) continue;
+      if (slot.start <= now) {
+        rec.reminded = true;
+        await this.d.store.put('party', rec.plan.id, rec);
+        continue;
+      }
+      if (slot.start - now > REMIND_BEFORE) continue;
+      rec.reminded = true;
+      await this.d.store.put('party', rec.plan.id, rec);
+      for (const who of rec.plan.guests.filter((g) => rec.plan.rsvp[g] === 'yes' && !(rec.plan.surprise && g === rec.plan.honoree))) {
+        const jobs = (rec.plan.tasks?.specs ?? []).filter((s) => rec.plan.tasks!.owner[s.id] === who && rec.plan.tasks!.state[s.id] === 'accepted').map((s) => s.label.charAt(0).toLowerCase() + s.label.slice(1));
+        await this.send(who, say.reminder(rec.title, slot, await this.tzOf(who), jobs), [{ id: `party:${rec.plan.id}:withdraw`, label: "Can't come anymore", style: 'danger' }]);
+        sent++;
+      }
+    }
+    for (const rec of await this.d.store.list<PairRecord>('pair')) {
+      const { plan } = rec;
+      if (plan.status !== 'confirmed' || rec.reminded) continue;
+      if (plan.interval.start <= now) {
+        rec.reminded = true;
+        await this.d.store.put('pair', plan.id, rec);
+        continue;
+      }
+      if (plan.interval.start - now > REMIND_BEFORE) continue;
+      rec.reminded = true;
+      await this.d.store.put('pair', plan.id, rec);
+      for (const [who, other] of [[plan.a, plan.b], [plan.b, plan.a]] as const) {
+        await this.send(who, say.pairReminder(await this.nameOf(other), plan.interval, await this.tzOf(who)), [{ id: `pair:${plan.id}:cancel`, label: "Can't make it anymore", style: 'danger' }]);
+        sent++;
+      }
+    }
+    return sent;
   }
 
   private async pairRound(now: Ms): Promise<number> {
