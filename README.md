@@ -7,7 +7,7 @@ It spots the birthday, finds the evening everyone is free, hands out the jobs, a
 
 [![CI](https://github.com/myselfsiddharth/rally/actions/workflows/ci.yml/badge.svg)](https://github.com/myselfsiddharth/rally/actions/workflows/ci.yml)
 ![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6)
-![192 tests](https://img.shields.io/badge/tests-226-brightgreen)
+![226 tests](https://img.shields.io/badge/tests-226-brightgreen)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
 Built at DevHacks 2026 for the Cubbie Hackathon, Track 2: agents for different students that coordinate toward a shared outcome.
