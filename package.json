@@ -10,7 +10,7 @@
     "start": "next start",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "sim": "tsx src/sim/cli.ts",
+    "sim": "tsx src/sim/main.ts",
     "gen:sim": "tsx scripts/gen-sim.ts",
     "register-commands": "tsx scripts/register-commands.ts"
   },
