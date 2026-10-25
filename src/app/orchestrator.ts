@@ -205,7 +205,17 @@ export class Orchestrator {
       return;
     }
     const line = this.d.polish ? await this.d.polish(text) : text;
-    await this.d.platform.dm(person, line, buttons);
+    await this.deliver(person, line, buttons);
+  }
+
+  /** One person whose DMs are closed must never stop a plan for everyone else, so failures are recorded, not thrown. */
+  private async deliver(person: PersonId, text: string, buttons?: Button[]): Promise<void> {
+    try {
+      await this.d.platform.dm(person, text, buttons);
+    } catch (e) {
+      const id = `${this.d.now()}-${await this.counter('undelivered')}`;
+      await this.d.store.put('undelivered', id, { id, person, at: this.d.now(), reason: e instanceof Error ? e.message.slice(0, 120) : 'failed' });
+    }
   }
 
   /** Deliver held messages to anyone whose quiet hours have ended. */
@@ -216,7 +226,7 @@ export class Orchestrator {
       if (!new Governor().canDisturb(prefs, now).ok) continue;
       await this.d.store.del('outbox', item.id);
       const line = this.d.polish ? await this.d.polish(item.text) : item.text;
-      await this.d.platform.dm(item.person, line, item.buttons);
+      await this.deliver(item.person, line, item.buttons);
       sent++;
     }
     return sent;

@@ -123,6 +123,25 @@ describe('a party, end to end', () => {
   });
 });
 
+describe('unreachable people', () => {
+  it('records a failed DM and still carries the plan forward for everyone else', async () => {
+    const env = setup();
+    const circle = await circleOfSix(env);
+    const realDm = env.platform.dm.bind(env.platform);
+    env.platform.dm = async (person, text, buttons) => {
+      if (person === 'cy') throw new Error('Discord dm request failed with status 403');
+      return realDm(person, text, buttons);
+    };
+    const res = await env.app.startParty({ circle: circle.id, host: 'ana', occasion: 'hangout', title: 'Hang' });
+    expect(res.ok).toBe(true);
+    expect(env.platform.to('cy')).toEqual([]);
+    for (const id of ['ben', 'dee', 'eli', 'fay']) expect(env.platform.to(id).some((d) => d.text.includes('Can you make it'))).toBe(true);
+    const missed = await env.store.list<{ person: string; reason: string }>('undelivered');
+    expect(missed.length).toBeGreaterThan(0);
+    expect(missed.every((m) => m.person === 'cy' && m.reason.includes('403'))).toBe(true);
+  });
+});
+
 describe('calendars and privacy gaps', () => {
   it('counts out someone whose calendar is not connected, and tells them how to fix it', async () => {
     const env = setup({ disconnected: ['dee'] });
