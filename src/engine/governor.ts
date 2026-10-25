@@ -45,6 +45,11 @@ export class Governor {
     (this.invites[person] ??= []).push(at);
   }
 
+  /** How many pair invites this person has sent or received in the last 7 days. */
+  recentInviteCount(person: PersonId, now: Ms): number {
+    return (this.invites[person] ?? []).filter((t) => now - t < 7 * DAY && now >= t).length;
+  }
+
   recordDecline(a: PersonId, b: PersonId, at: Ms): void {
     this.declines[pairKey(a, b)] = at;
   }
